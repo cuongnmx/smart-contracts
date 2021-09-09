@@ -8,12 +8,28 @@ require('@nomiclabs/hardhat-waffle')
 require('./tasks')
 
 module.exports = {
-    solidity: '0.8.0',
+    solidity: {
+        compilers: [
+//            {
+//                version: '0.8.0'
+//            },
+//            {
+//                version: '0.6.6'
+//            },
+            {
+                version: '0.7.6'
+            }
+        ]
+    },
     defaultNetwork: 'hardhat',
     networks: {
         hardhat: {},
-        howl_rinkeby: {
-            url: process.env.HOWL_RINKEBY_API_URL,
+        rinkeby: {
+            url: "https://eth-rinkeby.alchemyapi.io/v2/ayHhac_uUumhuuKoRyrY0qzHkvDesmNk",
+            accounts: [`0x${process.env.HOWL_PRIVATE_KEY}`]
+        },
+        kovan: {
+            url: 'https://eth-kovan.alchemyapi.io/v2/w9r9s4NdWn2cqb2RpWwZO1NB13j4dLig',
             accounts: [`0x${process.env.HOWL_PRIVATE_KEY}`]
         },
         bsc_testnet: {

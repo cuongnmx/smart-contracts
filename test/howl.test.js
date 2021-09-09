@@ -1,20 +1,21 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 
-const deploy = async (contract) => {
+const deploy = async (contract, name, symbol) => {
     const Contract = await ethers.getContractFactory(contract)
-    const _contract = await Contract.deploy()
+    const _contract = await Contract.deploy(name, symbol)
     await _contract.deployed()
     return _contract.address
 }
 
-describe.skip('BEP20Token', () => {
-    let contract, contract_rw, accounts
+describe('ERC20Token', () => {
+    let contract, contract_rw, accounts, contract_2, contract_2_rw
 
     before(async () => {
         accounts = await ethers.provider.listAccounts()
         const genericErc20Abi = require('../Erc20Abi.json')
-        const address = await deploy('BEP20Token')
+
+        const address = await deploy('Howl', 'HOWL', 'HWL')
 
         contract = new ethers.Contract(
             address,
@@ -38,7 +39,7 @@ describe.skip('BEP20Token', () => {
         })
 
         it('Should return 500000000.0 tokens of contract deployer', async () => {
-            const Contract = await ethers.getContractFactory('BEP20Token')
+            const Contract = await ethers.getContractFactory('Howl')
             const balance = ethers.utils.formatEther(
                 await contract.balanceOf(Contract.signer.address)
             )
