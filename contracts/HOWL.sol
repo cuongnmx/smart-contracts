@@ -11,7 +11,7 @@ contract Howl is ERC20, Ownable {
 
     uint256 public maxSupply = 500000000 * 10 ** 18;
 
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
+    constructor() ERC20("HOWL", "HWL") {
         _mint(_msgSender(), maxSupply);
     }
 }

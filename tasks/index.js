@@ -23,11 +23,9 @@ task('mint', 'Mint NFT')
 
 task('deploy', 'Deploy contracts')
     .addParam('contract', 'Name of contract', undefined, types.string)
-    .addOptionalParam('name', 'Token name', 'HOWL', types.string)
-    .addOptionalParam('symbol', 'Token symbol', 'HWL', types.string)
     .setAction(async (args, hre) => {
         const Contract = await hre.ethers.getContractFactory(args.contract)
-        const contract = await Contract.deploy(args.name, args.symbol)
+        const contract = await Contract.deploy()
         await contract.deployed()
 
         console.log('Contract deploy to: ', contract.address)

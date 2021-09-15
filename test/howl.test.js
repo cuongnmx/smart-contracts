@@ -8,7 +8,7 @@ const deploy = async (contract, name, symbol) => {
     return _contract.address
 }
 
-describe('ERC20Token', () => {
+describe.skip('ERC20Token', () => {
     let contract, contract_rw, accounts, contract_2, contract_2_rw
 
     before(async () => {

@@ -1,0 +1,15 @@
+{
+    "attributes": [
+        {
+            "trait_type": "Vehicle",
+            "value": "Motorbike"
+        },
+        {
+            "trait_type": "Color",
+            "value": "Red - White"
+        }
+    ],
+    "description": "Motorbike in HowlCity game",
+    "image": "https://gateway.pinata.cloud/ipfs/QmdrcQQe3jnudmNKVjVgvdaDyLyVAhHuxwctwu6jZkd26q",
+    "name": "Motorbike NFT"
+}
