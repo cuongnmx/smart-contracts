@@ -1,17 +1,17 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 
-describe('NftItem', () => {
-    let nftItem
+describe.skip('GameItem', () => {
+    let gameItem
 
     before(async () => {
-        const contractAbi = require('../artifacts/contracts/NftItem.sol/NftItem.json').abi
+        const contractAbi = require('../artifacts/contracts/GameItem.sol/GameItem.json').abi
 
-        //const ContractFactory = await ethers.getContractFactory('NftItem')
+        //const ContractFactory = await ethers.getContractFactory('GameItem')
         //const contract = await ContractFactory.deploy()
         //await contract.deployed()
 
-        nftItem = new ethers.Contract(
+        gameItem = new ethers.Contract(
             //contract.address,
             '0xa45C56f1276E620da5388745F1cB60FD8c3178dD',
             contractAbi,
@@ -26,7 +26,7 @@ describe('NftItem', () => {
         res = await res.wait()
 
         const tokenID = res.events[0].args[2]
-        console.log(await nftItem.ownerOf(tokenID))
-        console.log(await nftItem.tokenURI(tokenID))
+        console.log(await gameItem.ownerOf(tokenID))
+        console.log(await gameItem.tokenURI(tokenID))
     })
 })

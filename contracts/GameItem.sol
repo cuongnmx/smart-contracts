@@ -9,14 +9,16 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract NftItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, AccessControl, ERC721Burnable {
+contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, AccessControl, ERC721Burnable {
     using Counters for Counters.Counter;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     Counters.Counter private _tokenIdCounter;
 
-    constructor() ERC721("NftItem", "NIT") {
+    address marketplaceAddress = 0x5FbDB2315678afecb367f032d93F642f64180aa3;
+
+    constructor() ERC721("GameItem", "GIT") {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(PAUSER_ROLE, msg.sender);
         _setupRole(MINTER_ROLE, msg.sender);
@@ -30,7 +32,7 @@ contract NftItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Access
         _unpause();
     }
 
-    function safeMint(address to, uint256 newItemId) public onlyRole(MINTER_ROLE) {
+    function safeMint(address to, uint256 newItemId) private onlyRole(MINTER_ROLE) {
         _safeMint(to, newItemId);
     }
 
@@ -59,13 +61,18 @@ contract NftItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Access
         return super.supportsInterface(interfaceId);
     }
 
-    function awardItem(address player, string memory uri) public returns (uint256) {
+    function awardItem(address player, string memory uri) public onlyRole(MINTER_ROLE) returns (uint256) {
         _tokenIdCounter.increment();
 
         uint256 newItemId = _tokenIdCounter.current();
         safeMint(player, newItemId);
         _setTokenURI(newItemId, uri);
+        setApprovalForAll(marketplaceAddress, true);
 
         return newItemId;
+    }
+    
+    function approveMarket(bool approval) public {
+        setApprovalForAll(marketplaceAddress, approval);
     }
 }
