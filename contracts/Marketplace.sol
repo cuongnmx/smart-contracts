@@ -15,7 +15,8 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
 
     Counters.Counter private _saleIds;
-    Counters.Counter private _itemsSold;
+    Counters.Counter private _saleSold;
+    Counters.Counter private _saleInactive;
 
     address payable owner;
     IERC20 howl;
@@ -37,6 +38,7 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
         uint256 saleId;
         uint256 tokenId;
         address seller;
+        address buyer;
         uint256 price;
         bool isSold;
         bool isActive;
@@ -59,6 +61,11 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
     function getListingPrice() external view returns (uint256) {
         return listingPrice;
     }
+
+    function changeListingPrice(uint256 newListingPrice) external {
+        require(newListingPrice > 0, "Price must be at least 1 wei");
+        listingPrice = newListingPrice;
+    }
   
     /* Places an item for sale on the marketplace */
     function createSale(uint256 tokenId, uint256 price) external payable nonReentrant {
@@ -72,6 +79,7 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
             saleId,
             tokenId,
             msg.sender,
+            address(0),
             price,
             false,
             true,
@@ -103,8 +111,9 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
 
         sale.isSold = true;
         sale.isActive = false;
+        sale.buyer = msg.sender;
 
-        _itemsSold.increment();
+        _saleSold.increment();
 
         emit TokenSold(
             saleId,
@@ -137,6 +146,8 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
         nft.transferFrom(address(this), msg.sender, sale.tokenId);
         sale.isActive = false;
 
+        _saleInactive.increment();
+
         emit SaleCanceled(
             saleId,
             sale.tokenId,
@@ -145,66 +156,82 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
         );
     }
 
-    /* Returns all unsold market items */
-    //function fetchSales() public view returns (ListingItem[] memory) {
-    //    uint256 itemCount = _itemIds.current();
-    //    uint256 unsoldItemCount = itemCount - _itemsSold.current();
+    /* Returns all active sales */
+    function getActiveSales() external view returns (Sale[] memory) {
+        uint256 saleCount = _saleIds.current();
+        uint256 activeSaleCount = saleCount - _saleInactive.current();
 
-    //    uint256 currentIndex = 0;
-    //    ListingItem[] memory items = new ListingItem[](unsoldItemCount);
-    //    for (uint256 i = 1; i <= itemCount; i++) {
-    //        if (Sales[i].isSold == false) {
-    //            ListingItem storage currentItem = Sales[i];
-    //            items[currentIndex++] = currentItem;
-    //            //currentIndex += 1;
-    //        }
-    //    }
-    //    return items;
-    //}
+        uint256 currentIndex = 0;
+        Sale[] memory sales = new Sale[](activeSaleCount);
+        for (uint256 i = 1; i <= saleCount; i++) {
+            if (Sales[i].isActive) {
+                Sale storage sale = Sales[i];
+                sales[currentIndex++] = sale;
+            }
+        }
 
-    ///* Returns onlyl items that a user has purchased */
-    //function fetchMyNFTs() public view returns (ListingItem[] memory) {
-    //    uint256 totalItemCount = _itemIds.current();
-    //    uint256 itemCount = 0;
-    //    uint256 currentIndex = 0;
+        return sales;
+    }
 
-    //    for (uint256 i = 1; i <= totalItemCount; i++) {
-    //        if (Sales[i].owner == msg.sender) {
-    //            itemCount += 1;
-    //        }
-    //    }
+    /* Returns all inactive sales */
+    function getInactiveSales() external view returns (Sale[] memory) {
+        uint256 inactiveSaleCount = _saleInactive.current();
 
-    //    ListingItem[] memory items = new ListingItem[](itemCount);
-    //    for (uint256 i = 1; i <= totalItemCount; i++) {
-    //        if (Sales[i].owner == msg.sender) {
-    //            ListingItem storage currentItem = Sales[i];
-    //            items[currentIndex++] = currentItem;
-    //            //currentIndex += 1;
-    //        }
-    //    }
-    //    return items;
-    //}
+        uint256 currentIndex = 0;
+        Sale[] memory sales = new Sale[](inactiveSaleCount);
+        for (uint256 i = 1; i <= _saleIds.current(); i++) {
+            if (!Sales[i].isActive) {
+                Sale storage sale = Sales[i];
+                sales[currentIndex++] = sale;
+            }
+        }
 
-    ///* Returns only items a user has created */
-    //function fetchItemCreated() public view returns (ListingItem[] memory) {
-    //    uint256 totalItemCount = _itemIds.current();
-    //    uint256 itemCount = 0;
-    //    uint256 currentIndex = 0;
+        return sales;
+    }
 
-    //    for (uint256 i = 1; i <= totalItemCount; i++) {
-    //        if (Sales[i].seller == msg.sender) {
-    //            itemCount += 1;
-    //        }
-    //    }
+    /* Returns only sales that a user has purchased */
+    function getUserPurchasedSales() external view returns (Sale[] memory) {
+        uint256 saleCount = _saleIds.current();
+        uint256 count = 0;
+        uint256 currentIndex = 0;
 
-    //    ListingItem[] memory items = new ListingItem[](itemCount);
-    //    for (uint256 i = 1; i <= totalItemCount; i++) {
-    //        if (Sales[i].seller == msg.sender) {
-    //            ListingItem storage currentItem = Sales[i];
-    //            items[currentIndex++] = currentItem;
-    //            //currentIndex += 1;
-    //        }
-    //    }
-    //    return items;
-    //}
+        for (uint256 i = 1; i <= saleCount; i++) {
+            if (Sales[i].buyer == msg.sender) {
+                count += 1;
+            }
+        }
+
+        Sale[] memory sales = new Sale[](count);
+        for (uint256 i = 1; i <= saleCount; i++) {
+            if (Sales[i].buyer == msg.sender) {
+                Sale storage sale = Sales[i];
+                sales[currentIndex++] = sale;
+            }
+        }
+
+        return sales;
+    }
+
+    /* Returns only sales that a user has created */
+    function getUserCreatedSales() external view returns (Sale[] memory) {
+        uint256 saleCount = _saleIds.current();
+        uint256 count = 0;
+        uint256 currentIndex = 0;
+
+        for (uint256 i = 1; i <= saleCount; i++) {
+            if (Sales[i].seller == msg.sender) {
+                count += 1;
+            }
+        }
+
+        Sale[] memory sales = new Sale[](count);
+        for (uint256 i = 1; i <= saleCount; i++) {
+            if (Sales[i].seller == msg.sender) {
+                Sale storage sale = Sales[i];
+                sales[currentIndex++] = sale;
+            }
+        }
+
+        return sales;
+    }
 }

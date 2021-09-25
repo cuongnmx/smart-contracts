@@ -115,18 +115,9 @@ describe('Marketplace', () => {
                 gameItemAbi,
                 signer
             )
-            let approval = await gameitem.approveMarket(true)
+            let approval = await gameitem.approveMarket()
             approval = await approval.wait()
             expect(true).to.equal(
-                await gameitem.isApprovedForAll(
-                    signer.address,
-                    Marketplace.address
-                )
-            )
-
-            approval = await gameitem.approveMarket(false)
-            approval = await approval.wait()
-            expect(false).to.equal(
                 await gameitem.isApprovedForAll(
                     signer.address,
                     Marketplace.address
@@ -142,7 +133,7 @@ describe('Marketplace', () => {
                 gameItemAbi,
                 signer
             )
-            let approval = await gameitem.approveMarket(true)
+            let approval = await gameitem.approveMarket()
             approval = await approval.wait()
 
             const market = new ethers.Contract(
@@ -170,6 +161,31 @@ describe('Marketplace', () => {
             )
         })
 
+        it('Should return a list of user created sales', async () => {
+            const market = new ethers.Contract(
+                Marketplace.address,
+                marketplaceAbi,
+                signers[1]
+            )
+        
+            const res = await market.getUserCreatedSales()
+
+            expect(res[0].tokenId).to.equal(ethers.BigNumber.from('1'))
+            expect(res[1].tokenId).to.equal(ethers.BigNumber.from('2'))
+        })
+
+        it('Should return a list of active sales', async () => {
+            const market = new ethers.Contract(
+                Marketplace.address,
+                marketplaceAbi,
+                signers[0]
+            )
+
+            const res = await market.getActiveSales()
+            expect(res[0].tokenId).to.equal(ethers.BigNumber.from('1'))
+            expect(res[1].tokenId).to.equal(ethers.BigNumber.from('2'))
+        })
+
         it('Should cancel a sale', async () => {
             const signer = signers[1]
 
@@ -189,6 +205,17 @@ describe('Marketplace', () => {
             await res.wait()
 
             expect(await gameitem.ownerOf(2)).to.equal(signer.address)
+        })
+
+        it('Should return a list of inactive sales', async () => {
+            const market = new ethers.Contract(
+                Marketplace.address,
+                marketplaceAbi,
+                signers[0]
+            )
+
+            const res = await market.getInactiveSales()
+            expect(res[0].tokenId).to.equal(ethers.BigNumber.from('2'))
         })
 
         it('Should change price of a sale to 1000', async () => {
@@ -247,10 +274,20 @@ describe('Marketplace', () => {
             expect('999000.0').to.equal(
                 ethers.utils.formatEther(await howl.balanceOf(buyer.address))
             )
+        })
 
-            //console.log(ethers.utils.formatEther(await buyer.getBalance()))
-            //console.log(ethers.utils.formatEther(await signers[1].getBalance()))
-            //console.log(ethers.utils.formatEther(await signers[0].getBalance()))
+        it('Should return a list of purchased sales', async () => {
+            const market = new ethers.Contract(
+                Marketplace.address,
+                marketplaceAbi,
+                signers[2]
+            )
+
+            const res = await market.getUserPurchasedSales()
+            let time = res[0].lastUpdated
+            //console.log(time.toNumber())
+            
+            expect(res[0].tokenId).to.equal(ethers.BigNumber.from('1'))
         })
     })
 })

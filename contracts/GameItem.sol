@@ -73,7 +73,7 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Acces
         return newItemId;
     }
     
-    function approveMarket(bool approval) public {
-        setApprovalForAll(marketplaceAddress, approval);
+    function approveMarket() public {
+        setApprovalForAll(marketplaceAddress, true);
     }
 }
