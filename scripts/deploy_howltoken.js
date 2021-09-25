@@ -1,11 +1,9 @@
 const { ethers } = require('hardhat')
 
 const deploy = async () => {
-    const marketplaceAddress = ''
-
     const HowlToken = await ethers.getContractFactory('HowlToken')
 
-    const token = await HowlToken.deploy(marketplaceAddress)
+    const token = await HowlToken.deploy()
     console.log('Contract deploy to a address:', token.address)
 }
 

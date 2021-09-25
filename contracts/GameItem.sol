@@ -16,12 +16,13 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Acces
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     Counters.Counter private _tokenIdCounter;
 
-    address marketplaceAddress = 0x5FbDB2315678afecb367f032d93F642f64180aa3;
+    address marketplaceAddress;
 
-    constructor() ERC721("GameItem", "GIT") {
+    constructor(address _marketplaceAddress) ERC721("GameItem", "GIT") {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(PAUSER_ROLE, msg.sender);
         _setupRole(MINTER_ROLE, msg.sender);
+        marketplaceAddress = _marketplaceAddress;
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -61,7 +62,7 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Acces
         return super.supportsInterface(interfaceId);
     }
 
-    function awardItem(address player, string memory uri) public onlyRole(MINTER_ROLE) returns (uint256) {
+    function mintNFT(address player, string memory uri) public onlyRole(MINTER_ROLE) returns (uint256) {
         _tokenIdCounter.increment();
 
         uint256 newItemId = _tokenIdCounter.current();
