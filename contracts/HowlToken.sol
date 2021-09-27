@@ -11,14 +11,11 @@ contract HowlToken is ERC20, ERC20Burnable, Pausable, AccessControl {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    address marketplaceAddress;
-
-    constructor(address _marketplaceAddress) ERC20("HowlToken", "HWL") {
+    constructor() ERC20("HowlToken", "HWL") {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(PAUSER_ROLE, msg.sender);
         _setupRole(MINTER_ROLE, msg.sender);
         _mint(msg.sender, 500000000 * 10 ** decimals());
-        marketplaceAddress = _marketplaceAddress;
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
