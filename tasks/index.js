@@ -33,13 +33,18 @@ task('mint', 'Mint NFT')
             await ethers.getSigner()
         )
 
-        for (let i = 0; i < args.quantity; i++) {
-            let res = await gameItem.mintNFT(
-                args.address,
-                'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
-            )
-            res = await res.wait()
-        }
+        const quantity = Array.from(Array(args.quantity).keys())
+
+        const res = await Promise.all(
+            quantity.map(async (_) => {
+                let res = await gameItem.mintNFT(
+                    args.address,
+                    'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
+                )
+                res = await res.wait()
+                return 'done'
+            })
+        )
         console.log('minted')
 
         const balance = await gameItem.balanceOf(args.address)
