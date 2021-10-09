@@ -16,19 +16,34 @@ task('balance', "Prints an account's balance")
     })
 
 task('mint', 'Mint NFT')
-    .addOptionalParam('token', 'TokenID', 1, types.int)
+    .addOptionalParam('quantity', 'Number of NFT to be minted', 1, types.int)
+    .addOptionalParam(
+        'address',
+        "The account's address",
+        '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+        types.string
+    )
     .setAction(async (args, hre) => {
-        console.log('mint')
-    })
+        const contractAbi = require('../artifacts/contracts/GameItem.sol/GameItem.json')
+        const { nftAddress } = require('../deployed_address.json')
 
-task('deploy', 'Deploy contracts')
-    .addParam('contract', 'Name of contract', undefined, types.string)
-    .setAction(async (args, hre) => {
-        const Contract = await hre.ethers.getContractFactory(args.contract)
-        const contract = await Contract.deploy()
-        await contract.deployed()
+        const gameItem = new ethers.Contract(
+            nftAddress,
+            contractAbi.abi,
+            await ethers.getSigner()
+        )
 
-        console.log('Contract deploy to: ', contract.address)
+        for (let i = 0; i < args.quantity; i++) {
+            let res = await gameItem.mintNFT(
+                args.address,
+                'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
+            )
+            res = await res.wait()
+        }
+        console.log('minted')
+
+        const balance = await gameItem.balanceOf(args.address)
+        console.log(`NFT owned: ${balance.toString()}`)
     })
 
 module.exports = {}

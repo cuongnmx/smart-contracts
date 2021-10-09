@@ -10,6 +10,9 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "hardhat/console.sol";
 
+import "./GameItem.sol";
+import "./HowlToken.sol";
+
 contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
     using Counters for Counters.Counter;
     using SafeERC20 for IERC20;
@@ -20,13 +23,13 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
 
     address payable owner;
     IERC20 howl;
-    IERC721 nft;
+    GameItem nft;
     uint256 listingPrice = 0 ether;
 
     function initialize(address erc20, address erc721) external initializer {
         owner = payable(msg.sender);
         howl = IERC20(erc20);
-        nft = IERC721(erc721);
+        nft = GameItem(erc721);
     }
 
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
@@ -233,5 +236,28 @@ contract Marketplace is ReentrancyGuard, IERC721Receiver, Initializable {
         }
 
         return sales;
+    }
+
+    struct TokenInfo {
+        uint256 tokenId;
+        address contractAddress;
+        string URI;
+    }
+
+    function getUserNFTs() external view returns (TokenInfo[] memory) {
+        uint256 balance = nft.balanceOf(msg.sender);
+
+        TokenInfo[] memory tokens = new TokenInfo[](balance);
+
+        for (uint256 i = 0; i < balance; i++) {
+            uint256 tokenId = nft.tokenOfOwnerByIndex(msg.sender, i);
+            string memory uri = nft.tokenURI(tokenId);
+            
+            tokens[i] = TokenInfo(
+                tokenId, address(nft), uri
+            );
+        }
+
+        return tokens;
     }
 }

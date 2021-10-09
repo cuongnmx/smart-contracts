@@ -1,7 +1,7 @@
 const { ethers } = require('hardhat')
 
 const contractAbi =
-    require('../artifacts/contracts/NftItem.sol/NftItem.json').abi
+    require('../artifacts/contracts/GameItem.sol/GameItem.json').abi
 
 const mint = async (player) => {
     const nftItem = new ethers.Contract(

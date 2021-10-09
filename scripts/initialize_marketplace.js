@@ -12,7 +12,7 @@ const deploy = async () => {
         await ethers.getSigner()
     )
 
-    market.initialize(obj.tokenAddress, obj.nftAddress)
+    await market.initialize(obj.tokenAddress, obj.nftAddress)
 
     console.log('done')
 }

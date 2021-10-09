@@ -4,6 +4,7 @@ const fs = require('fs')
 const deploy = async () => {
     const HowlToken = await ethers.getContractFactory('HowlToken')
     const token = await HowlToken.deploy()
+    await token.deployed()
 
     let obj = JSON.parse(fs.readFileSync('deployed_address.json'))
     obj.tokenAddress = token.address

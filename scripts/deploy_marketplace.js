@@ -4,6 +4,7 @@ const fs = require('fs')
 const deploy = async () => {
     const Marketplace = await ethers.getContractFactory('Marketplace')
     const market = await Marketplace.deploy()
+    await market.deployed()
 
     let json = { marketAddress: market.address }
     fs.writeFileSync('deployed_address.json', JSON.stringify(json))
