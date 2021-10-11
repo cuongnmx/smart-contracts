@@ -2,7 +2,7 @@ const { ethers } = require('hardhat')
 const fs = require('fs')
 
 const deploy = async () => {
-    const HowlToken = await ethers.getContractFactory('HowlToken')
+    const HowlToken = await ethers.getContractFactory('HOWL')
     const token = await HowlToken.deploy()
     await token.deployed()
 

@@ -1,14 +1,14 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 
-describe.skip('Marketplace', () => {
+describe('Marketplace', () => {
     let Marketplace, GameItem, HowlToken, signers
     const marketplaceAbi =
         require('../artifacts/contracts/Marketplace.sol/Marketplace.json').abi
     const gameItemAbi =
         require('../artifacts/contracts/GameItem.sol/GameItem.json').abi
     const howlTokenAbi =
-        require('../artifacts/contracts/HowlToken.sol/HowlToken.json').abi
+        require('../artifacts/contracts/HOWL.sol/HOWL.json').abi
 
     before(async () => {
         signers = await ethers.getSigners()
@@ -33,7 +33,7 @@ describe.skip('Marketplace', () => {
             await ethers.getSigner()
         )
 
-        const HowlTokenFactory = await ethers.getContractFactory('HowlToken')
+        const HowlTokenFactory = await ethers.getContractFactory('HOWL')
         HowlToken = await HowlTokenFactory.deploy()
         await HowlToken.deployed()
         HowlToken = new ethers.Contract(
