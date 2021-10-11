@@ -1,7 +1,7 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 
-describe.skip('GameController', () => {
+describe('GameController', () => {
     let GameController, GameItem, signers
     const gameControllerAbi =
         require('../artifacts/contracts/GameController.sol/GameController.json').abi

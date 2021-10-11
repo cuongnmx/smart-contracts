@@ -1,7 +1,7 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 
-describe('Marketplace', () => {
+describe.skip('Marketplace', () => {
     let Marketplace, GameItem, HowlToken, signers
     const marketplaceAbi =
         require('../artifacts/contracts/Marketplace.sol/Marketplace.json').abi

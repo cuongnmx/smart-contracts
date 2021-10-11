@@ -672,7 +672,7 @@ pragma solidity ^0.8.0;
 
 contract HOWL is ERC20, ERC20Burnable, Pausable, Ownable {
     constructor() ERC20("HOWL", "HWL") {
-        _mint(msg.sender, 500000000 * 10 ** decimals());
+        _mint(msg.sender, 540000000 * 10 ** decimals());
     }
 
     function pause() public onlyOwner {
