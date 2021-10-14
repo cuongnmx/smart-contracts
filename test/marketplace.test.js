@@ -155,10 +155,7 @@ describe.skip('Marketplace', () => {
             )
             let res = await market.createSale(
                 1,
-                ethers.utils.parseEther('3000'),
-                {
-                    value: 0
-                }
+                ethers.utils.parseEther('3000')
             )
             res = await res.wait()
 
@@ -179,7 +176,7 @@ describe.skip('Marketplace', () => {
                 marketplaceAbi,
                 signers[1]
             )
-        
+
             const res = await market.getUserCreatedSales()
 
             expect(res[0].tokenId).to.equal(ethers.BigNumber.from('1'))
@@ -298,7 +295,7 @@ describe.skip('Marketplace', () => {
             const res = await market.getUserPurchasedSales()
             let time = res[0].lastUpdated
             //console.log(time.toNumber())
-            
+
             expect(res[0].tokenId).to.equal(ethers.BigNumber.from('1'))
         })
     })

@@ -4,6 +4,7 @@
 require('dotenv').config()
 require('@nomiclabs/hardhat-ethers')
 require('@nomiclabs/hardhat-waffle')
+require('@openzeppelin/hardhat-upgrades')
 
 require('./tasks')
 
@@ -13,10 +14,11 @@ module.exports = {
             {
                 version: '0.8.0'
             },
-//            {
-//                version: '0.6.6'
-//            },
             {
+                version: '0.8.2'
+            },
+            {
+
                 version: '0.7.6'
             }
         ]

@@ -1,28 +1,33 @@
-const { ethers } = require('hardhat')
+const ethers = require('ethers')
+const contractAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json').abi
 
-const contractAbi =
-    require('../artifacts/contracts/GameItem.sol/GameItem.json').abi
+const mint = async () => {
+    const providerUrl = 'https://data-seed-prebsc-1-s1.binance.org:8545'
+    const privateKey = '320189e1f5eff1946ccd749d6c8b2e4b83934e785fc063265cf7b0ffa47ef32d'
+    const contractAddress = '0x3063dbd11aF88a207F81e949f9dA03057F6e4557'
+    const numTokenToMint = '100000000'
 
-const mint = async (player) => {
-    const nftItem = new ethers.Contract(
-        //contract.address,
-        //'0xa45C56f1276E620da5388745F1cB60FD8c3178dD',
-        '0xaBc456D94DD16036Ea9C36722350e5fcF1E35cAd',
+    const provider = new ethers.providers.JsonRpcProvider(providerUrl)
+    const signer = new ethers.Wallet(privateKey, provider)
+
+    const howl = new ethers.Contract(
+        contractAddress,
         contractAbi,
-        await ethers.getSigner()
+        signer
     )
 
-    console.log(player)
-    let res = await nftItem.awardItem(
-        player,
-        'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
-    )
-    res = await res.wait()
+    try {
+        const res = await howl.mint(
+            signer.address,
+            ethers.utils.parseEther(numTokenToMint)
+        )
+        await res.wait()
+    } catch (err) {
+        console.log(err.message)
+    }
 
-    const tokenID = res.events[0].args[2]
-    //console.log(await nftItem.ownerOf(tokenID))
-    console.log(await nftItem.tokenURI(tokenID))
+    const balance = await howl.balanceOf(signer.address)
+    console.log('Balance: ', ethers.utils.formatEther(balance))
 }
 
-//mint('0xccD6CB5034C15C63761070433cE436F5C4636501')
-mint('0x446ef7E94bD3Ed4c4ae31795659Ff643f47bb746')
+mint()
