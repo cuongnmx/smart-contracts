@@ -1,7 +1,7 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 
-describe('ERC20Capped', () => {
+describe.skip('ERC20Capped', () => {
     it('deploy', async () => {
         const howlAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json').abi
 

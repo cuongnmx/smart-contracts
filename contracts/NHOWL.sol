@@ -9,12 +9,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable {
+contract NHOWL is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIdCounter;
 
-    constructor() ERC721("GameItem", "GIT") {}
+    constructor() ERC721("NHOWL", "NHWL") {}
 
     function pause() public onlyOwner {
         _pause();
@@ -61,7 +61,7 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
         return super.supportsInterface(interfaceId);
     }
 
-    function mintNFT(address user, string memory uri) external onlyOwner returns (uint256) {
+    function mint(address user, string memory uri) external onlyOwner returns (uint256) {
         _tokenIdCounter.increment();
 
         uint256 newItemId = _tokenIdCounter.current();
