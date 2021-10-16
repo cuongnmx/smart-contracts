@@ -1,45 +1,83 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 
 import "hardhat/console.sol";
 
-contract GameController is Ownable, Initializable {
-    mapping(address => string) usernames;
-
+contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     address howl;
     address nft;
 
-    function initialize(address erc721) external initializer {
-        //howl = erc20;
+    function initialize(address erc20, address erc721) external initializer {
+        __Ownable_init();
+
+        howl = erc20;
         nft = erc721;
     }
 
-    //event UsernameChanged(address msgSender, uint256 lastUpdated);
-
-    function getUsername() external view returns (string memory) {
-        return usernames[msg.sender];
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
+    
+    /** 
+     *  Players
+     */
+    struct Player {
+        string name;
+        uint256 fuel;
     }
 
-    function setUsername(string memory newUsername) external {
-        usernames[msg.sender] = newUsername;
+    mapping(address => Player) players;
+
+    /** 
+     *  Player name
+     */
+    function getPlayerName() external view returns (string memory) {
+        return players[msg.sender].name;
     }
 
+    function setPlayerName(string memory newPlayerName) external {
+        players[msg.sender].name = newPlayerName;
+    }
+
+    /**
+     * Fuel
+     */
+    function getPlayerFuel() external view returns (uint256){
+        return players[msg.sender].fuel;
+    }
+
+    function setPlayerFuel(address player, uint256 fuel) external onlyOwner {
+        players[player].fuel = fuel;
+    }
+
+    /**
+     * Reward
+     */
+    function reward() external onlyOwner {
+        
+    }
+    
+
+    /**
+     * NFT
+     */
     struct TokenInfo {
         uint256 tokenId;
         address contractAddress;
         string URI;
     }
 
-    function getUserNFT() external view returns (TokenInfo[] memory) {
+    function getPlayerNFT() external view returns (TokenInfo[] memory) {
         uint256 numToken = IERC721(nft).balanceOf(msg.sender);
 
         TokenInfo[] memory tokens = new TokenInfo[](numToken);
@@ -49,7 +87,7 @@ contract GameController is Ownable, Initializable {
             string memory uri = ERC721URIStorage(nft).tokenURI(tokenId);
             
             tokens[i] = TokenInfo(
-                tokenId, address(nft), uri
+                tokenId, nft, uri
             );
         }
 

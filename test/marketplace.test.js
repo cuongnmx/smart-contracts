@@ -1,7 +1,7 @@
 const { expect } = require('chai')
 const { ethers, upgrades } = require('hardhat')
 
-describe.skip('Marketplace', () => {
+describe('Marketplace', () => {
     before('set up', async () => {
         this.signers = await ethers.getSigners()
         this.HowlToken = await ethers.getContractFactory('HOWL')
@@ -45,30 +45,30 @@ describe.skip('Marketplace', () => {
         )
     })
 
-    it('mint token for contract owner', async () => {
-        const minted = await this.HowlToken.mint(
-            this.signers[0].address,
-            ethers.utils.parseEther('540000000')
-        )
-        await minted.wait()
-    })
+    //it('mint token for contract owner', async () => {
+    //    const minted = await this.HowlToken.mint(
+    //        this.signers[0].address,
+    //        ethers.utils.parseEther('540000000')
+    //    )
+    //    await minted.wait()
+    //})
 
-    it('listing price', async () => {
-        const price = await this.Marketplace.getListingPrice()
-        expect(price.toNumber()).to.equal(10)
+    it('fee percent', async () => {
+        const fee = await this.Marketplace.getFee()
+        expect(fee.toNumber()).to.equal(10)
 
-        await this.Marketplace.setListingPrice(5)
-        const newPrice = await this.Marketplace.getListingPrice()
-        expect(newPrice.toNumber()).to.equal(5)
+        await this.Marketplace.setFee(20)
+        const newFee = await this.Marketplace.getFee()
+        expect(newFee.toNumber()).to.equal(20)
     })
 
     it('fee receiver', async () => {
         const receiver = await this.Marketplace.getFeeReceiver()
         expect(receiver).to.equal(this.signers[0].address)
 
-        await this.Marketplace.setFeeReceiver(this.signers[1].address)
+        await this.Marketplace.setFeeReceiver(this.signers[3].address)
         const newReceiver = await this.Marketplace.getFeeReceiver()
-        expect(newReceiver).to.equal(this.signers[1].address)
+        expect(newReceiver).to.equal(this.signers[3].address)
     })
 
     it('mint nft', async () => {
@@ -172,9 +172,11 @@ describe.skip('Marketplace', () => {
     })
 
     it('should return a list of active sales', async () => {
+        //const provider = new ethers.providers.JsonRpcProvider()
         const market = new ethers.Contract(
             this.Marketplace.address,
             this.marketplaceAbi,
+            //provider
             this.signers[0]
         )
 
@@ -245,7 +247,9 @@ describe.skip('Marketplace', () => {
     })
 
     it('should successfully buy a token', async () => {
+        const seller = this.signers[1].address
         const buyer = this.signers[2]
+        const feeReceiver = this.signers[3].address
 
         const gameitem = new ethers.Contract(
             this.NHOWL.address,
@@ -265,16 +269,19 @@ describe.skip('Marketplace', () => {
             buyer
         )
 
-        await howl.approve(market.address, ethers.utils.parseEther('100000'))
+        const unlimitedAllowance =
+            '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+        await howl.approve(market.address, unlimitedAllowance)
 
-        let res = await market.purchaseSale(1, ethers.utils.parseEther('1000'))
+        let res = await market.purchaseSale(1)
         res = await res.wait()
 
         expect(await this.NHOWL.ownerOf(1)).to.equal(buyer.address)
-        expect('1000.0').to.equal(
-            ethers.utils.formatEther(
-                await howl.balanceOf(this.signers[1].address)
-            )
+        expect('20.0').to.equal(
+            ethers.utils.formatEther(await howl.balanceOf(feeReceiver))
+        )
+        expect('980.0').to.equal(
+            ethers.utils.formatEther(await howl.balanceOf(seller))
         )
         expect('999000.0').to.equal(
             ethers.utils.formatEther(await howl.balanceOf(buyer.address))

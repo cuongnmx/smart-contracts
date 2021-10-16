@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
 /**
@@ -670,9 +671,15 @@ abstract contract ERC20Burnable is Context, ERC20 {
 
 pragma solidity ^0.8.0;
 
-contract HOWL is ERC20, ERC20Burnable, Pausable, Ownable {
+contract HOWLCapped is ERC20, ERC20Burnable, Pausable, Ownable {
+    uint256 private immutable _cap;
+
     constructor() ERC20("HOWL", "HWL") {
-        _mint(msg.sender, 540000000 * 10 ** decimals());
+        _cap = 540000000 * 10 ** decimals();
+    }
+
+    function cap() public view virtual returns (uint256) {
+        return _cap;
     }
 
     function pause() public onlyOwner {
@@ -681,6 +688,11 @@ contract HOWL is ERC20, ERC20Burnable, Pausable, Ownable {
 
     function unpause() public onlyOwner {
         _unpause();
+    }
+
+    function _mint(address account, uint256 amount) internal override {
+        require(ERC20.totalSupply() + amount <= cap(), "ERC20: cap exceeded");
+        super._mint(account, amount);
     }
 
     function mint(address to, uint256 amount) public onlyOwner {
