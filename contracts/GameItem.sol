@@ -9,12 +9,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract NHOWL is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable {
+contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIdCounter;
 
-    constructor() ERC721("NHOWL", "NHWL") {}
+    constructor() ERC721("GameItem", "GIT") {}
 
     function pause() public onlyOwner {
         _pause();
@@ -61,19 +61,46 @@ contract NHOWL is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         return super.supportsInterface(interfaceId);
     }
 
-    function mint(address user, string memory uri) external onlyOwner returns (uint256) {
+    function mint(address user, string memory uri, uint256 itemId, uint8 star) external onlyOwner {
         _tokenIdCounter.increment();
 
-        uint256 newItemId = _tokenIdCounter.current();
-        _safeMint(user, newItemId);
-        _setTokenURI(newItemId, uri);
-        //setApprovalForAll(marketplaceAddress, true);
-
-        return newItemId;
+        uint256 newTokenId = _tokenIdCounter.current();
+        _safeMint(user, newTokenId);
+        _setTokenURI(newTokenId, uri);
+        _createGameItem(newTokenId, itemId, star);
     }
     
     function approveAddress(address addr) external {
         setApprovalForAll(addr, true);
+    }
+    
+    /**
+     * Game item
+     */
+    struct Item {
+        uint256 itemId;
+        uint8 star;
+    }
+
+    mapping(uint256 => Item) public gameItems;
+
+    event ItemUpgraded(uint256 tokenId, uint8 oldStar, uint8 newStar);
+
+    function getGameItem(uint256 tokenId) external view returns (Item memory) {
+        return gameItems[tokenId];
+    }
+
+    function _createGameItem(uint256 tokenId, uint256 itemId, uint8 star) internal {
+        gameItems[tokenId] = Item(itemId, star);
+    }
+
+    function upgradeGameItem(uint256 tokenId) external onlyOwner {
+        Item storage item = gameItems[tokenId];
+        require(item.star < 5, "Number of star is already max");
+
+        item.star += 1;
+
+        emit ItemUpgraded(tokenId, item.star - 1, item.star);
     }
 }
 

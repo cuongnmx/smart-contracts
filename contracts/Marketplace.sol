@@ -232,21 +232,32 @@ contract Marketplace is
         return sales;
     }
 
-    /* Returns all inactive sales */
-    function getInactiveSales() external view returns (Sale[] memory) {
-        uint256 inactiveSaleCount = _saleInactive.current();
+    function getActiveSalesByPage(uint page, uint size) external view returns (Sale[] memory) {
+        require(page >= 0 && size > 0, "Page and size must be greater than 0");
+
+        uint256 saleCount = _saleIds.current();
+        uint256 activeSaleCount = saleCount - _saleInactive.current() - _saleSold.current();
+        if (activeSaleCount < page * size) return new Sale[](0);
 
         uint256 currentIndex = 0;
-        Sale[] memory sales = new Sale[](inactiveSaleCount);
-        for (uint256 i = 1; i <= _saleIds.current(); i++) {
-            if (!Sales[i].isActive) {
-                Sale storage sale = Sales[i];
-                sales[currentIndex++] = sale;
+        uint256 count = 0;
+
+        uint256 saleSize = (page + 1) * size > activeSaleCount ? activeSaleCount - page * size : size;
+        Sale[] memory sales = new Sale[](saleSize);
+        for (uint256 i = 1; i <= saleCount; i++) {
+            if (Sales[i].isActive) {
+                count++;
+                if (count > page * size) {
+                    Sale storage sale = Sales[i];
+                    sales[currentIndex] = sale;
+                    if (currentIndex++ == size - 1) break;
+                }
             }
         }
 
         return sales;
     }
+
 
     /* Returns only sales that a user has purchased */
     function getUserPurchasedSales() external view returns (Sale[] memory) {

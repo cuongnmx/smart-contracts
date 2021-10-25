@@ -2,10 +2,10 @@ const { expect } = require('chai')
 const { ethers, upgrades } = require('hardhat')
 const gameControllerAbi =
     require('../artifacts/contracts/GameController.sol/GameController.json').abi
-const nftAbi = require('../artifacts/contracts/NHOWL.sol/NHOWL.json').abi
+const nftAbi = require('../artifacts/contracts/GameItem.sol/GameItem.json').abi
 const howlAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json').abi
 
-describe.skip('GameController', () => {
+describe('GameController', () => {
     before(async () => {
         this.signers = await ethers.getSigners()
 
@@ -35,7 +35,7 @@ describe.skip('GameController', () => {
             this.signers[0]
         )
 
-        const nftFactory = await ethers.getContractFactory('NHOWL')
+        const nftFactory = await ethers.getContractFactory('GameItem')
         this.NFT = await nftFactory.deploy()
         await this.NFT.deployed()
         this.NFT = new ethers.Contract(
@@ -44,7 +44,7 @@ describe.skip('GameController', () => {
             this.signers[0]
         )
 
-        this.GameController.initialize(this.NFT.address, this.NFT.address)
+        this.GameController.initialize(this.howl.address, this.NFT.address)
     })
 
     it('mint nft to contract owner', async () => {
@@ -61,24 +61,70 @@ describe.skip('GameController', () => {
         )
     })
 
-    it('mint token to contract owner', async () => {
-        const mint = await this.howl.mint(this.signers[0].address, ethers.utils.parseEther('100000000'))
-        await mint.wait()
-
+    it('token contract owner', async () => {
         const res = await this.howl.balanceOf(this.signers[0].address)
-        expect(ethers.utils.formatEther(res)).to.equal('100000000.0')
+        //console.log(ethers.utils.formatEther(res))
+        expect(ethers.utils.formatEther(res)).to.equal('540000000.0')
+    })
+
+    describe('Game Master', () => {
+        it('should change ticket price', async () => {
+            const price = await this.GameController.getTicketPrice()
+            //console.log(ethers.utils.formatEther(price))
+            expect(ethers.utils.formatEther(price)).to.equal('10.0')
+
+            const changed = await this.GameController.setTicketPrice(
+                ethers.utils.parseEther('20')
+            )
+            const newPrice = await this.GameController.getTicketPrice()
+            expect(ethers.utils.formatEther(newPrice)).to.equal('20.0')
+
+            const changed2 = await this.GameController.setTicketPrice(ethers.utils.parseEther('10'))
+            const newPrice2 = await this.GameController.getTicketPrice()
+            expect(ethers.utils.formatEther(newPrice2)).to.equal('10.0')
+        })
+
+        it.skip('should change prize percent', async () => {
+            const changed = await this.GameController.setPrizePercent(2, [100, 0])
+            await changed.wait()
+
+            const percent = await this.GameController.getPrizePercent(2)
+            percent.map(it => console.log(it.toNumber()))
+        })
+
+        it.skip('should change point', async () => {
+            const changed = await this.GameController.setPoint(2, [10000, 20000])
+            await changed.wait()
+
+            const point = await this.GameController.getPoint(2)
+            point.map(it => console.log(it.toNumber()))
+        })
+
+        it.skip('should change game master', async () => {
+            const gm = await this.GameController.getGameMaster()
+            expect(gm).to.equal(this.signers[0].address)
+
+            const changed = await this.GameController.setGameMaster(
+                this.signers[2].address
+            )
+            const newGm = await this.GameController.getGameMaster()
+            expect(newGm).to.equal(this.signers[2].address)
+        })
     })
 
     describe('Player', () => {
-        it('Should return playername', async () => {
+        it('Should return player info', async () => {
             controller = new ethers.Contract(
                 this.GameController.address,
                 gameControllerAbi,
                 this.signers[1]
             )
 
-            const res = await controller.getPlayerName()
-            expect("").to.equal(res)
+            const player = await controller.getPlayerInfoByAddress(this.signers[1].address)
+
+            expect('').to.equal(player.name)
+            expect(ethers.BigNumber.from('0')).to.equal(player.ticket)
+            expect(ethers.BigNumber.from('0')).to.equal(player.point)
         })
 
         it('Should change playername', async () => {
@@ -90,39 +136,176 @@ describe.skip('GameController', () => {
 
             let res = await controller.setPlayerName('new player name')
             await res.wait()
-            res = await controller.getPlayerName()
 
-            expect('new player name').to.equal(res)
+            const player = await controller.getPlayerInfo()
+
+            expect('new player name').to.equal(player.name)
         })
 
-        it('Should return fuel', async () => {
+        it('Should buy ticket', async () => {
+            const unlimitedAllowance =
+                '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+            let approval = await this.howl.approve(
+                this.GameController.address,
+                unlimitedAllowance
+            )
+            appoval = await approval.wait()
+
+            const bought = await this.GameController.buyTicket(10)
+            const info = await this.GameController.getPlayerInfo()
+            expect(info.ticket.toNumber()).to.equal(10)
+        })
+    })
+
+    describe('Game', () => {
+        it.skip('start game', async () => {
+            const addresses = []
+            for (let i = 1; i < 7; i++) {
+                addresses.push(this.signers[i].address)
+            }
+
+            const started = await this.GameController.startGame(addresses)
+            await started.wait()
+
+            const getgame = await this.GameController.getGame(addresses)
+            console.log(getgame)
+        })
+
+        it.skip('reward room 2 pvp', async () => {
+            const addresses = []
+            const len = 3
+            for (let i = 1; i < len; i++) {
+                addresses.push(this.signers[i].address)
+            }
+
+            const rewarded = await this.GameController.rewardPvP(addresses)
+            await rewarded.wait()
+            
+            for (let i = 0; i < len - 1; i++) {
+                let balance = await this.howl.balanceOf(addresses[i])
+                console.log(ethers.utils.formatEther(balance))
+
+                const controller = new ethers.Contract(
+                    this.GameController.address,
+                    gameControllerAbi,
+                    this.signers[i + 1]
+                )
+                let info = await controller.getPlayerInfo()
+                console.log(info.point.toNumber())
+            }
+        })
+
+        it.skip('reward room 3 pvp', async () => {
+            const addresses = []
+            const len = 4
+            for (let i = 1; i < len; i++) {
+                addresses.push(this.signers[i].address)
+            }
+
+            const rewarded = await this.GameController.rewardPvP(addresses)
+            await rewarded.wait()
+            
+            for (let i = 0; i < len - 1; i++) {
+                let balance = await this.howl.balanceOf(addresses[i])
+                console.log(ethers.utils.formatEther(balance))
+
+                const controller = new ethers.Contract(
+                    this.GameController.address,
+                    gameControllerAbi,
+                    this.signers[i + 1]
+                )
+                let info = await controller.getPlayerInfo()
+                console.log(info.point.toNumber())
+            }
+        })
+
+        it.skip('reward room 4 pvp', async () => {
+            const addresses = []
+            const len = 5
+            for (let i = 1; i < len; i++) {
+                addresses.push(this.signers[i].address)
+            }
+
+            const rewarded = await this.GameController.rewardPvP(addresses)
+            await rewarded.wait()
+            
+            for (let i = 0; i < len - 1; i++) {
+                let balance = await this.howl.balanceOf(addresses[i])
+                console.log(ethers.utils.formatEther(balance))
+
+                const controller = new ethers.Contract(
+                    this.GameController.address,
+                    gameControllerAbi,
+                    this.signers[i + 1]
+                )
+                let info = await controller.getPlayerInfo()
+                console.log(info.point.toNumber())
+            }
+        })
+
+        it.skip('reward room 5 pvp', async () => {
+            const addresses = []
+            const len = 6
+            for (let i = 1; i < len; i++) {
+                addresses.push(this.signers[i].address)
+            }
+
+            const rewarded = await this.GameController.rewardPvP(addresses)
+            await rewarded.wait()
+            
+            for (let i = 0; i < len - 1; i++) {
+                let balance = await this.howl.balanceOf(addresses[i])
+                console.log(ethers.utils.formatEther(balance))
+
+                const controller = new ethers.Contract(
+                    this.GameController.address,
+                    gameControllerAbi,
+                    this.signers[i + 1]
+                )
+                let info = await controller.getPlayerInfo()
+                console.log(info.point.toNumber())
+            }
+        })
+
+        it.skip('reward room 6 pvp', async () => {
+            const addresses = []
+            const len = 7
+            for (let i = 1; i < len; i++) {
+                addresses.push(this.signers[i].address)
+            }
+
+            const rewarded = await this.GameController.rewardPvP(addresses)
+            await rewarded.wait()
+            
+            for (let i = 0; i < len - 1; i++) {
+                let balance = await this.howl.balanceOf(addresses[i])
+                console.log(ethers.utils.formatEther(balance))
+
+                const controller = new ethers.Contract(
+                    this.GameController.address,
+                    gameControllerAbi,
+                    this.signers[i + 1]
+                )
+                let info = await controller.getPlayerInfo()
+                console.log(info.point.toNumber())
+            }
+        })
+
+        it('reward pve', async () => {
+            const rewarded = await this.GameController.rewardPvE(this.signers[10].address, 1)
+            await rewarded.wait()
+
             const controller = new ethers.Contract(
                 this.GameController.address,
                 gameControllerAbi,
-                this.signers[1]
+                this.signers[10]
             )
+            const info = await controller.getPlayerInfo()
+            console.log(info.point.toNumber())
 
-            const res = await controller.getPlayerFuel()
-            expect(0).to.equal(res.toNumber())
+            const res = await this.howl.balanceOf(this.signers[10].address)
+            console.log(ethers.utils.formatEther(res))
         })
-
-        it('Should change fuel', async () => {
-            const owner = new ethers.Contract(
-                this.GameController.address,
-                gameControllerAbi,
-                this.signers[0]
-            )
-            const res = await owner.setPlayerFuel(this.signers[1].address, 10)
-
-            const player = new ethers.Contract(
-                this.GameController.address,
-                gameControllerAbi,
-                this.signers[1]
-            )
-            const fuel = await player.getPlayerFuel()
-            expect(10).to.equal(fuel.toNumber())
-        })
-        
     })
 
     describe('NFT', () => {
@@ -136,7 +319,9 @@ describe.skip('GameController', () => {
             let res = await controller.getPlayerNFT()
             expect(10).to.equal(res.length)
             expect(res[3].tokenId).to.equal(ethers.BigNumber.from('4'))
-            expect(res[3].URI).to.equal('https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk')
+            expect(res[3].URI).to.equal(
+                'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
+            )
         })
     })
 })
