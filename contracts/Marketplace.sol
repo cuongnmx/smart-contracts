@@ -16,6 +16,10 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
+interface IGameItem {
+    function createGameItem(address user, string memory uri, uint256 itemId, uint8 star) external;
+}
+
 contract Marketplace is 
     Initializable,
     UUPSUpgradeable,
@@ -30,6 +34,7 @@ contract Marketplace is
     Counters.Counter private _saleSold;
     Counters.Counter private _saleInactive;
 
+    uint256 private storePrice;
     uint256 private feePercentX10;
     address private feeReceiver;
     IERC20 public howl;
@@ -43,6 +48,8 @@ contract Marketplace is
 
         feePercentX10 = 10;
         feeReceiver = msg.sender;
+
+        storePrice = 10 * 10 ** 18;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
@@ -137,8 +144,6 @@ contract Marketplace is
         Sale storage sale = Sales[saleId];
         uint256 price = sale.price;
 
-        uint256 allowance = howl.allowance(msg.sender, address(this));
-        require(allowance >= price, "Not enough allowance");
         require((sale.isActive == true) && (sale.isSold == false), "Sale was ended.");
         require(msg.sender != sale.seller, "Buyer is seller of this item.");
 
@@ -305,6 +310,9 @@ contract Marketplace is
         return sales;
     }
 
+    /**
+     *  Token info
+     */
     struct TokenInfo {
         uint256 tokenId;
         address contractAddress;
@@ -325,5 +333,41 @@ contract Marketplace is
         }
 
         return tokens;
+    }
+
+    /**
+     *  Store
+     */
+    mapping(uint256 => uint256) public availableQuantity;
+
+    event QuantitySet(uint256 itemId, uint256 quantity);
+
+    function getItemQuantity(uint256[] memory itemIds) external view returns (uint256[] memory) {
+        uint256[] memory res = new uint256[](itemIds.length);
+        for (uint i = 0; i < itemIds.length; i++) {
+            res[i] = availableQuantity[itemIds[i]];
+        }
+        return res;
+    }
+
+    function setItemQuantity(uint256 itemId, uint256 quantity) external onlyOwner {
+        availableQuantity[itemId] = quantity;
+
+        emit QuantitySet(itemId, quantity);
+    }
+
+    function setStorePrice(uint256 newStorePrice) external {
+        storePrice = newStorePrice;
+    }
+
+    function buyGameItem(string memory uri, uint256 itemId) external {
+        require(availableQuantity[itemId] > 0, "this item is not available");
+
+        bool transfered = howl.transferFrom(msg.sender, feeReceiver, storePrice);
+        require(transfered, "Failed to transfer fee");
+
+        IGameItem(address(nft)).createGameItem(msg.sender, uri, itemId, 3);
+
+        availableQuantity[itemId]--;
     }
 }

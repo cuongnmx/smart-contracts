@@ -5,7 +5,7 @@ const gameControllerAbi =
 const nftAbi = require('../artifacts/contracts/GameItem.sol/GameItem.json').abi
 const howlAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json').abi
 
-describe('GameController', () => {
+describe.skip('GameController', () => {
     before(async () => {
         this.signers = await ethers.getSigners()
 

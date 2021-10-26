@@ -61,36 +61,36 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
         return super.supportsInterface(interfaceId);
     }
 
-    function mint(address user, string memory uri, uint256 itemId, uint8 star) external onlyOwner {
-        _tokenIdCounter.increment();
-
-        uint256 newTokenId = _tokenIdCounter.current();
-        _safeMint(user, newTokenId);
-        _setTokenURI(newTokenId, uri);
-        _createGameItem(newTokenId, itemId, star);
-    }
-    
     function approveAddress(address addr) external {
         setApprovalForAll(addr, true);
     }
-    
+
     /**
      * Game item
      */
     struct Item {
         uint256 itemId;
-        uint8 star;
+        uint256 star;
     }
 
     mapping(uint256 => Item) public gameItems;
 
-    event ItemUpgraded(uint256 tokenId, uint8 oldStar, uint8 newStar);
+    event ItemUpgraded(uint256 tokenId, uint256 itemId, uint256 oldStar, uint256 newStar);
 
     function getGameItem(uint256 tokenId) external view returns (Item memory) {
         return gameItems[tokenId];
     }
 
-    function _createGameItem(uint256 tokenId, uint256 itemId, uint8 star) internal {
+    function createGameItem(address user, string memory uri, uint256 itemId, uint8 star) external {
+        _tokenIdCounter.increment();
+        uint256 newTokenId = _tokenIdCounter.current();
+        
+        _createGameItem(newTokenId, itemId, star);
+        _safeMint(user, newTokenId);
+        _setTokenURI(newTokenId, uri);
+    }
+
+    function _createGameItem(uint256 tokenId, uint256 itemId, uint256 star) internal {
         gameItems[tokenId] = Item(itemId, star);
     }
 
@@ -100,7 +100,7 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
 
         item.star += 1;
 
-        emit ItemUpgraded(tokenId, item.star - 1, item.star);
+        emit ItemUpgraded(tokenId, item.itemId, item.star - 1, item.star);
     }
 }
 
