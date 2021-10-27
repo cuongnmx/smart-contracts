@@ -19,18 +19,17 @@ import "hardhat/console.sol";
 contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     using SafeMath for uint256;
 
+    Counters.Counter public gameId;
     address public howl;
     address public nft;
-    address private gameMaster;
-    uint256 private ticketPrice;
-    uint256 private hostingFeeX10;
-    mapping(uint256 => uint256[]) private prizePercentX10;
-    mapping(uint256 => uint256[]) private points;
-    uint256[] private pvepoints;
-    uint256[] private pveprizes;
-
-    Counters.Counter private gameId;
-    mapping(address => uint256) private playerToGameId;
+    address public gameMaster;
+    uint256 public ticketPrice;
+    uint256 public hostingFeeX10;
+    uint256[] public pvepoints;
+    uint256[] public pveprizes;
+    mapping(uint256 => uint256[]) public prizePercentX10;
+    mapping(uint256 => uint256[]) public points;
+    mapping(address => uint256) public playerToGameId;
 
     function initialize(address erc20, address erc721) external initializer {
         __Ownable_init();
@@ -62,10 +61,6 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     /**
      * Game Master
      */
-    function getGameMaster() external view returns (address) {
-        return gameMaster;
-    }
-
     function setGameMaster(address newGameMaster) external onlyOwner {
         gameMaster = newGameMaster;
     }
@@ -73,32 +68,16 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     /**
      * Prize and point
      */
-    function getPoint(uint256 room) external view returns (uint256[] memory) {
-        return points[room];
-    }
-
     function setPoint(uint256 room, uint256[] memory point) external onlyOwner {
         points[room] = point;
-    }
-
-    function getPrizePercent(uint256 room) external view returns (uint256[] memory) {
-        return prizePercentX10[room];
     }
 
     function setPrizePercent(uint256 room, uint256[] memory percentX10) external onlyOwner {
         prizePercentX10[room] = percentX10;
     }
 
-    function getPvEPoint() external view returns (uint256[] memory) {
-        return pvepoints;
-    }
-
     function setPvEPoint(uint256[] memory point) external onlyOwner {
         pvepoints = point;
-    }
-
-    function getPvEPrizes() external view returns (uint256[] memory) {
-        return pveprizes;
     }
 
     function setPvEPrizes(uint256[] memory prizes) external onlyOwner {
@@ -108,10 +87,6 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     /**
      * Ticket price
      */
-    function getTicketPrice() external view returns (uint256) {
-        return ticketPrice;
-    }
-
     function setTicketPrice(uint256 newTicketPrice) external onlyOwner {
         require(newTicketPrice > 0, "Price must be at least 1 wei");
         ticketPrice = newTicketPrice;
@@ -126,23 +101,12 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 point;
     }
 
-    mapping(address => Player) players;
+    mapping(address => Player) public players;
 
     event PvPRewarded(address gameMaster, address player, uint256 rank, uint256 token, uint256 point, uint256 time);
     event PvERewarded(address gameMaster, address player, uint256 rank, uint256 token, uint256 point, uint256 time);
     event TicketBought(address player, uint256 boughtQuantity, uint256 price);
     event GameStarted(uint256 gameid, address[] players, bool isActive);
-
-    /**
-     *  Player info
-     */
-    function getPlayerInfo() external view returns (Player memory) {
-        return players[msg.sender];
-    }
-
-    function getPlayerInfoByAddress(address player) external view returns (Player memory) {
-        return players[player];
-    }
 
     /** 
      *  Player name
@@ -172,12 +136,12 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         mapping(address => bool) addressToRewarded;
     }
 
-    mapping(uint256 => GameInfo) private games;
+    mapping(uint256 => GameInfo) public games;
 
     /**
      *  Game
      */
-    function startGame(address[] memory addresses) external onlyOwner returns (bool) {
+    function startGame(address[] memory addresses) external onlyOwner {
         for (uint i = 0; i < addresses.length; i++) {
             require(players[msg.sender].ticket > 0, "Not enough ticket");
         }
