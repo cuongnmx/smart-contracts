@@ -5,7 +5,7 @@ const gameControllerAbi =
 const nftAbi = require('../artifacts/contracts/GameItem.sol/GameItem.json').abi
 const howlAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json').abi
 
-describe.skip('GameController', () => {
+describe('GameController', () => {
     before(async () => {
         this.signers = await ethers.getSigners()
 
@@ -51,9 +51,11 @@ describe.skip('GameController', () => {
         const quantity = Array.from(Array(10).keys())
         const res = await Promise.all(
             quantity.map(async (it) => {
-                let res = await this.NFT.mint(
+                let res = await this.NFT.createGameItem(
                     this.signers[1].address,
-                    'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
+                    'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk',
+                    1,
+                    3
                 )
                 res = await res.wait()
                 return 'done'
@@ -61,7 +63,7 @@ describe.skip('GameController', () => {
         )
     })
 
-    it('token contract owner', async () => {
+    it('mint token to contract owner', async () => {
         const res = await this.howl.balanceOf(this.signers[0].address)
         //console.log(ethers.utils.formatEther(res))
         expect(ethers.utils.formatEther(res)).to.equal('540000000.0')
@@ -69,45 +71,45 @@ describe.skip('GameController', () => {
 
     describe('Game Master', () => {
         it('should change ticket price', async () => {
-            const price = await this.GameController.getTicketPrice()
+            const price = await this.GameController.ticketPrice()
             //console.log(ethers.utils.formatEther(price))
             expect(ethers.utils.formatEther(price)).to.equal('10.0')
 
             const changed = await this.GameController.setTicketPrice(
                 ethers.utils.parseEther('20')
             )
-            const newPrice = await this.GameController.getTicketPrice()
+            const newPrice = await this.GameController.ticketPrice()
             expect(ethers.utils.formatEther(newPrice)).to.equal('20.0')
 
             const changed2 = await this.GameController.setTicketPrice(ethers.utils.parseEther('10'))
-            const newPrice2 = await this.GameController.getTicketPrice()
+            const newPrice2 = await this.GameController.ticketPrice()
             expect(ethers.utils.formatEther(newPrice2)).to.equal('10.0')
         })
 
-        it.skip('should change prize percent', async () => {
+        it('should change prize percent', async () => {
             const changed = await this.GameController.setPrizePercent(2, [100, 0])
             await changed.wait()
 
-            const percent = await this.GameController.getPrizePercent(2)
-            percent.map(it => console.log(it.toNumber()))
+            const percent = await this.GameController.prizePercentX10(2, 0)
+            console.log(percent.toNumber())
         })
 
-        it.skip('should change point', async () => {
+        it('should change point', async () => {
             const changed = await this.GameController.setPoint(2, [10000, 20000])
             await changed.wait()
 
-            const point = await this.GameController.getPoint(2)
-            point.map(it => console.log(it.toNumber()))
+            const point = await this.GameController.points(2, 0)
+            console.log(point.toNumber())
         })
 
-        it.skip('should change game master', async () => {
-            const gm = await this.GameController.getGameMaster()
+        it('should change game master', async () => {
+            const gm = await this.GameController.gameMaster()
             expect(gm).to.equal(this.signers[0].address)
 
             const changed = await this.GameController.setGameMaster(
                 this.signers[2].address
             )
-            const newGm = await this.GameController.getGameMaster()
+            const newGm = await this.GameController.gameMaster()
             expect(newGm).to.equal(this.signers[2].address)
         })
     })
@@ -120,7 +122,7 @@ describe.skip('GameController', () => {
                 this.signers[1]
             )
 
-            const player = await controller.getPlayerInfoByAddress(this.signers[1].address)
+            const player = await controller.players(this.signers[1].address)
 
             expect('').to.equal(player.name)
             expect(ethers.BigNumber.from('0')).to.equal(player.ticket)
@@ -137,7 +139,7 @@ describe.skip('GameController', () => {
             let res = await controller.setPlayerName('new player name')
             await res.wait()
 
-            const player = await controller.getPlayerInfo()
+            const player = await controller.players(this.signers[1].address)
 
             expect('new player name').to.equal(player.name)
         })
@@ -152,12 +154,12 @@ describe.skip('GameController', () => {
             appoval = await approval.wait()
 
             const bought = await this.GameController.buyTicket(10)
-            const info = await this.GameController.getPlayerInfo()
+            const info = await controller.players(this.signers[0].address)
             expect(info.ticket.toNumber()).to.equal(10)
         })
     })
 
-    describe('Game', () => {
+    describe.skip('Game', () => {
         it.skip('start game', async () => {
             const addresses = []
             for (let i = 1; i < 7; i++) {
@@ -308,7 +310,7 @@ describe.skip('GameController', () => {
         })
     })
 
-    describe('NFT', () => {
+    describe.skip('NFT', () => {
         it('Should return NFT info', async () => {
             const controller = new ethers.Contract(
                 this.GameController.address,
