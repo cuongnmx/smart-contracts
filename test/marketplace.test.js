@@ -43,6 +43,12 @@ describe('Marketplace', () => {
             this.gameItemAbi,
             this.signers[0]
         )
+
+        /**
+         *  Must setMarket for onlyMarket modifier to work
+         */
+        const set = await this.GameItem.setMarket(this.Marketplace.address)
+        await set.wait()
     })
 
     it('mint token', async () => {
@@ -57,28 +63,28 @@ describe('Marketplace', () => {
     })
 
     it('fee percent', async () => {
-        const fee = await this.Marketplace.getFee()
+        const fee = await this.Marketplace.feePercentX10()
         expect(fee.toNumber()).to.equal(10)
 
         await this.Marketplace.setFee(20)
-        const newFee = await this.Marketplace.getFee()
+        const newFee = await this.Marketplace.feePercentX10()
         expect(newFee.toNumber()).to.equal(20)
     })
 
     it('fee receiver', async () => {
-        const receiver = await this.Marketplace.getFeeReceiver()
+        const receiver = await this.Marketplace.feeReceiver()
         expect(receiver).to.equal(this.signers[0].address)
 
         await this.Marketplace.setFeeReceiver(this.signers[3].address)
-        const newReceiver = await this.Marketplace.getFeeReceiver()
+        const newReceiver = await this.Marketplace.feeReceiver()
         expect(newReceiver).to.equal(this.signers[3].address)
     })
 
     it('get and set item quantity on store', async () => {
         const set = await this.Marketplace.setItemQuantity(1, 1000)
 
-        const res = await this.Marketplace.getItemQuantity([1, 2, 3, 4])
-        res.map(item => console.log(item.toNumber()))
+        const one = await this.Marketplace.availableQuantity(1)
+        console.log(one.toNumber())
     })
 
     it('buy nft', async () => {
@@ -101,25 +107,24 @@ describe('Marketplace', () => {
             player
         )
 
-        const bought = await store.buyGameItem('uri', 1)
+        let bought = await store.buyGameItem('uri', 1)
 
         let totalSupply = await this.GameItem.totalSupply()
         let numToken = await this.GameItem.balanceOf(player.address)
-        console.log(numToken.toNumber())
-        let info = await this.GameItem.getGameItem(1)
-        console.log(info)
+        //console.log(numToken.toNumber())
+        expect(numToken.toNumber()).to.equal(1)
+        let info = await this.GameItem.gameItems(1)
+        //console.log(info)
 
-        const res = await this.Marketplace.getItemQuantity([1, 2, 3, 4])
-        res.map(item => console.log(item.toNumber()))
+        const one = await this.Marketplace.availableQuantity(1)
+        //console.log(one.toNumber())
     })
 
     //it('should return list of user GameItem', async () => {
     //    const signer = this.signers[1]
     //    const market = new ethers.Contract(
     //        this.Marketplace.address,
-    //        this.marketplaceAbi,
-    //        signer
-    //    )
+    //        this.marketplaceAbi, signer)
     //    const nfts = await market.getUserNFTs()
     //    expect(nfts[0].tokenId).to.equal(ethers.BigNumber.from('1'))
     //    expect(nfts[1].tokenId).to.equal(ethers.BigNumber.from('2'))
