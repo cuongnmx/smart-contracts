@@ -61,9 +61,27 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
         return super.supportsInterface(interfaceId);
     }
 
+    /**
+     * Approve
+     */
     function approveAddress(address addr) external {
         setApprovalForAll(addr, true);
     }
+
+    address public market;
+
+    modifier onlyMarket() {
+        require(msg.sender == market, "onlyMarket: caller is not marketplace");
+        _;
+    }
+
+    /**
+     *  Set market
+     */
+    function setMarket(address marketAddress) external onlyOwner {
+        market = marketAddress;
+    }
+
 
     /**
      * Game item
@@ -77,24 +95,28 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
 
     event ItemUpgraded(uint256 tokenId, uint256 itemId, uint256 oldStar, uint256 newStar);
 
-    function getGameItem(uint256 tokenId) external view returns (Item memory) {
-        return gameItems[tokenId];
+    function _setGameItem(uint256 tokenId, uint256 itemId, uint256 star) internal {
+        gameItems[tokenId] = Item(itemId, star);
     }
 
-    function createGameItem(address user, string memory uri, uint256 itemId, uint8 star) external {
+    function _createGameItem(address user, string memory uri, uint256 itemId, uint8 star) internal {
         _tokenIdCounter.increment();
         uint256 newTokenId = _tokenIdCounter.current();
         
-        _createGameItem(newTokenId, itemId, star);
+        _setGameItem(newTokenId, itemId, star);
         _safeMint(user, newTokenId);
         _setTokenURI(newTokenId, uri);
     }
 
-    function _createGameItem(uint256 tokenId, uint256 itemId, uint256 star) internal {
-        gameItems[tokenId] = Item(itemId, star);
+    function createGameItem(address user, string memory uri, uint256 itemId, uint8 star) external onlyOwner {
+        _createGameItem(user, uri, itemId, star);
     }
 
-    function upgradeGameItem(uint256 tokenId) external onlyOwner {
+    function marketCreateGameItem(address user, string memory uri, uint256 itemId, uint8 star) external onlyMarket {
+        _createGameItem(user, uri, itemId, star);
+    }
+
+    function upgradeGameItem(uint256 tokenId) external onlyMarket {
         Item storage item = gameItems[tokenId];
         require(item.star < 5, "Number of star is already max");
 
