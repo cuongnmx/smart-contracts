@@ -310,20 +310,18 @@ describe('GameController', () => {
         })
     })
 
-    describe.skip('NFT', () => {
-        it('Should return NFT info', async () => {
+    describe('Game item', () => {
+        it('Should return game item info', async () => {
             const controller = new ethers.Contract(
                 this.GameController.address,
                 gameControllerAbi,
                 this.signers[1]
             )
 
-            let res = await controller.getPlayerNFT()
-            expect(10).to.equal(res.length)
-            expect(res[3].tokenId).to.equal(ethers.BigNumber.from('4'))
-            expect(res[3].URI).to.equal(
-                'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
-            )
+            let res = await controller.getGameItems(this.signers[1].address)
+            for (let it of res) {
+                console.log(it.tokenId.toNumber(), it.itemId.toNumber(), it.star.toNumber())
+            }
         })
     })
 })

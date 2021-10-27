@@ -94,6 +94,10 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
     mapping(uint256 => Item) public gameItems;
 
     event ItemUpgraded(uint256 tokenId, uint256 itemId, uint256 oldStar, uint256 newStar);
+    
+    function getGameItem(uint256 tokenId) external view returns (uint256, uint256) {
+        return (gameItems[tokenId].itemId, gameItems[tokenId].star);
+    }
 
     function _setGameItem(uint256 tokenId, uint256 itemId, uint256 star) internal {
         gameItems[tokenId] = Item(itemId, star);

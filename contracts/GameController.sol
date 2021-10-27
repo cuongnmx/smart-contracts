@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
+import "./interfaces/IGameItem.sol";
+
 import "hardhat/console.sol";
 
 contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
@@ -88,7 +90,7 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
      * Ticket price
      */
     function setTicketPrice(uint256 newTicketPrice) external onlyOwner {
-        require(newTicketPrice > 0, "Price must be at least 1 wei");
+        require(newTicketPrice > 0, "setTicketPrice: Price must be at least 1 wei");
         ticketPrice = newTicketPrice;
     }
     
@@ -119,11 +121,11 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
      * Ticket
      */
     function buyTicket(uint256 numTicket) external {
-        require(numTicket > 0, "Number of ticket to buy must be greater than 0");
+        require(numTicket > 0, "buyTicket: Number of ticket to buy must be greater than 0");
 
         uint256 price = numTicket * ticketPrice;
         bool transfered = IERC20(howl).transferFrom(msg.sender, gameMaster, price);
-        require(transfered, "Failed to transfer");
+        require(transfered, "buyTicket: Failed to transfer");
 
         players[msg.sender].ticket += numTicket;
         emit TicketBought(msg.sender, numTicket, price);
@@ -143,7 +145,7 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
      */
     function startGame(address[] memory addresses) external onlyOwner {
         for (uint i = 0; i < addresses.length; i++) {
-            require(players[msg.sender].ticket > 0, "Not enough ticket");
+            require(players[msg.sender].ticket > 0, "startGame: Not enough ticket");
         }
 
         GameInfo storage game = games[1];
@@ -181,7 +183,7 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
      */
     function rewardPvP(address[] memory addresses) external onlyOwner {
         uint len = addresses.length;
-        require((len > 1) && (len < 7), "Room must be greater than 1");
+        require((len > 1) && (len < 7), "rewardPvP: Room must be greater than 1");
         _rewardPvP(addresses, prizePercentX10[len], points[len]);
     }
 
@@ -193,7 +195,7 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             uint256 prize = pool.mul(percentX10[i]).div(1000);
             if (prize > 0) {
                 bool transfered = IERC20(howl).transferFrom(gameMaster, player[i], prize);
-                require(transfered, "Failed to transfer");
+                require(transfered, "_rewardPvP: Failed to transfer");
             }
             players[player[i]].point += point[i];
 
@@ -202,14 +204,14 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
     
     function rewardPvE(address player, uint256 rank) external onlyOwner {
-        require((rank > 0) && (rank < 7), "rank must be greater than 0 and smaller than 7");
+        require((rank > 0) && (rank < 7), "rewardPvE: Rank must be greater than 0 and smaller than 7");
         _rewardPvE(player, rank, pveprizes[rank - 1].mul(10 ** 18), pvepoints[rank - 1]);
     }
 
     function _rewardPvE(address player, uint256 rank, uint256 token, uint256 point) internal {
         if (rank == 1) {
             bool transfered = IERC20(howl).transferFrom(gameMaster, player, token);
-            require(transfered, "Failed to transfer");
+            require(transfered, "_rewardPvE: Failed to transfer");
         }
         players[player].point += point;
         emit PvERewarded(gameMaster, player, rank, token, point, block.timestamp);
@@ -218,43 +220,22 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     /**
      * NFT
      */
-    struct TokenInfo {
+    struct ItemInfo {
         uint256 tokenId;
-        address contractAddress;
-        string URI;
+        uint256 itemId;
+        uint256 star;
     }
 
-    function getPlayerNFT() external view returns (TokenInfo[] memory) {
-        uint256 numToken = IERC721(nft).balanceOf(msg.sender);
-
-        TokenInfo[] memory tokens = new TokenInfo[](numToken);
-
-        for (uint256 i = 0; i < numToken; i++) {
-            uint256 tokenId = ERC721Enumerable(nft).tokenOfOwnerByIndex(msg.sender, i);
-            string memory uri = ERC721URIStorage(nft).tokenURI(tokenId);
-            
-            tokens[i] = TokenInfo(
-                tokenId, nft, uri
-            );
-        }
-
-        return tokens;
-    }
-     
-    function getPlayerNFTByAddress(address player) external view returns (TokenInfo[] memory) {
+    function getGameItems(address player) external view returns (ItemInfo[] memory) {
         uint256 numToken = IERC721(nft).balanceOf(player);
 
-        TokenInfo[] memory tokens = new TokenInfo[](numToken);
-
+        ItemInfo[] memory items = new ItemInfo[](numToken);
         for (uint256 i = 0; i < numToken; i++) {
             uint256 tokenId = ERC721Enumerable(nft).tokenOfOwnerByIndex(player, i);
-            string memory uri = ERC721URIStorage(nft).tokenURI(tokenId);
-            
-            tokens[i] = TokenInfo(
-                tokenId, nft, uri
-            );
+            (uint256 itemId, uint256 star) = IGameItem(nft).getGameItem(tokenId);
+            items[i] = ItemInfo(tokenId, itemId, star);
         }
 
-        return tokens;
+        return items;
     }
 }

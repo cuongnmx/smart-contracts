@@ -1,8 +1,32 @@
 {
   "_format": "hh-sol-artifact-1",
   "contractName": "IGameItem",
-  "sourceName": "contracts/Marketplace.sol",
+  "sourceName": "contracts/interfaces/IGameItem.sol",
   "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getGameItem",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
     {
       "inputs": [
         {
@@ -26,7 +50,7 @@
           "type": "uint8"
         }
       ],
-      "name": "createGameItem",
+      "name": "marketCreateGameItem",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
