@@ -1,0 +1,5 @@
+# smart-contracts
+{"marketAddress":"0x279508098ef1dBB9Dc10C36C4bAF7FCB26C763E1",
+"tokenAddress":"0xfF41B162ff031169f4Dce89fAef84a004f923181",
+"nftAddress":"0x2A54f7532C8Fd4A82dbEB01f223160291B46C4eA",
+"controllerAddress":"0xe413fad514cb9FF2E4E02Df2318966d332a8e8e8"}
