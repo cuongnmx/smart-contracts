@@ -1,5 +1,8 @@
 const { task, types } = require('hardhat/config')
 
+require('./marketplace.js')
+require('./gamecontroller.js')
+
 task('accounts', 'Prints the list of accounts').setAction(async (args, hre) => {
     const accounts = await hre.ethers.getSigners()
 
@@ -25,7 +28,7 @@ task('mint', 'Mint NFT')
     )
     .setAction(async (args, hre) => {
         const contractAbi = require('../artifacts/contracts/GameItem.sol/GameItem.json')
-        const { nftAddress } = require('../deployed_address.json')
+        const { nftAddress } = require(`../${hre.network.name}_address.json`)
 
         const gameItem = new ethers.Contract(
             nftAddress,
@@ -33,99 +36,64 @@ task('mint', 'Mint NFT')
             await ethers.getSigner()
         )
 
-        const quantity = Array.from(Array(args.quantity).keys())
-
-        const res = await Promise.all(
-            quantity.map(async (_) => {
-                let res = await gameItem.mintNFT(
-                    args.address,
-                    'https://gateway.pinata.cloud/ipfs/QmcgTcKV5EC9BNw4rv3iSRPyuzgJ2qQxLnWoo67gk3okUk'
-                )
-                res = await res.wait()
-                return 'done'
-            })
-        )
-        console.log('minted')
+        for (let i = 0; i < args.quantity; i++) {
+            let res = await gameItem.createGameItem(
+                args.address,
+                'https://gateway.pinata.cloud/ipfs/QmaiYy8XwWtKZgVVm4LXDgVojPbRz9QodPZM6Tta2fUEDY',
+                12,
+                3
+            )
+            await res.wait()
+        }
 
         const balance = await gameItem.balanceOf(args.address)
         console.log(`NFT owned: ${balance.toString()}`)
     })
 
 task('approve', 'ERC20 approve')
-    .addParam(
-        'opt',
-        'contract address want to approve',
-        undefined,
-        types.string
-    )
     .setAction(async (args, hre) => {
-        const contractAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json')
+        const tokenAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json')
+        const nftAbi = require('../artifacts/contracts/GameItem.sol/GameItem.json')
         const {
             tokenAddress,
+            nftAddress,
             controllerAddress,
             marketAddress
-        } = require('../deployed_address.json')
+        } = require(`../${hre.network.name}_address.json`)
 
-        const provider = new ethers.providers.JsonRpcProvider(
-            'https://data-seed-prebsc-1-s1.binance.org:8545'
-        )
-        const wallet = new ethers.Wallet(
-            '018bfd0213f1615851e3bea353e02bb6be9eac3c964bb9c0b71e06513b921522',
-            provider
+        const signer = await ethers.getSigner()
+
+        const nft = new ethers.Contract(
+            nftAddress,
+            nftAbi.abi,
+            signer
         )
 
         const howl = new ethers.Contract(
             tokenAddress,
-            contractAbi.abi,
-            //await ethers.getSigner()
-            wallet
+            tokenAbi.abi,
+            signer
         )
 
-        let address = ''
-        if (args.opt === 'market') {
-            address = marketAddress
-        } else if (args.opt === 'controller') {
-            address = controllerAddress
+        const allowance = await howl.allowance(signer.address, controllerAddress)
+        if (allowance.eq(ethers.BigNumber.from('0'))) {
+            console.log('token aprove', controllerAddress)
+            const unlimitedAllowance =
+                '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+            let approval = await howl.approve(controllerAddress, unlimitedAllowance)
+            await approval.wait()
         }
-
-        const unlimitedAllowance =
-            '115792089237316195423570985008687907853269984665640564039457584007913129639935'
-        let approval = await howl.approve(address, unlimitedAllowance)
-        appoval = await approval.wait()
-        console.log('done')
     })
 
-task('reward', 'game reward').setAction(async (args, hre) => {
+task('view', 'Request data on blockchain').setAction(async (args, hre) => {
     const controllerAbi = require('../artifacts/contracts/GameController.sol/GameController.json')
     const tokenAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json')
+    const marketAbi = require('../artifacts/contracts/Marketplace.sol/Marketplace.json')
     const {
         controllerAddress,
-        tokenAddress
-    } = require('../deployed_address.json')
-
-    const gameController = new ethers.Contract(
-        controllerAddress,
-        controllerAbi.abi,
-        await ethers.getSigner()
-    )
-
-    const players = [
-        '0x91A736439Cb6339bA892fE70Bb5146A54e21044B',
-        '0x446ef7E94bD3Ed4c4ae31795659Ff643f47bb746',
-    ]
-
-    const rewarded = await gameController.rewardPvP(players)
-    await rewarded.wait()
-    console.log('done')
-})
-
-task('view', '').setAction(async (args, hre) => {
-    const controllerAbi = require('../artifacts/contracts/GameController.sol/GameController.json')
-    const tokenAbi = require('../artifacts/contracts/HOWL.sol/HOWL.json')
-    const {
-        controllerAddress,
-        tokenAddress
-    } = require('../deployed_address.json')
+        tokenAddress,
+        marketAddress
+    } = require(`../${hre.network.name}_address.json`)
 
     const provider = new ethers.providers.JsonRpcProvider(
         'https://data-seed-prebsc-1-s1.binance.org:8545'
@@ -141,10 +109,23 @@ task('view', '').setAction(async (args, hre) => {
         controllerAbi.abi,
         wallet
     )
+    
+    console.log(wallet.address)
 
-    const res = await gameController.getPlayerInfo()
-    console.log(res)
-    console.log(res.point.toNumber())
+    const player = await gameController.players(wallet.address)
+    console.log('player', player)
+
+    const items = await gameController.getGameItems(wallet.address)
+    console.log('getgameitems', items)
+
+    const market = new ethers.Contract(
+        marketAddress,
+        marketAbi.abi,
+        wallet
+    )
+
+    const price = await market.storePrice()
+    console.log(price.toString())
 })
 
 module.exports = {}

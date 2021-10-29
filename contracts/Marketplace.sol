@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -15,8 +13,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-
-import "./interfaces/IGameItem.sol";
 
 contract Marketplace is 
     Initializable,
@@ -32,22 +28,19 @@ contract Marketplace is
     Counters.Counter private _saleSold;
     Counters.Counter private _saleInactive;
 
-    uint256 public storePrice;
     uint256 public feePercentX10;
     address public feeReceiver;
     IERC20 public howl;
-    IERC721 public nft;
+    IERC721 public gameitem;
 
     function initialize(address erc20, address erc721) external initializer {
         __Ownable_init();
 
         howl = IERC20(erc20);
-        nft = IERC721(erc721);
+        gameitem = IERC721(erc721);
 
         feePercentX10 = 10;
         feeReceiver = msg.sender;
-
-        storePrice = 10 * 10 ** 18;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
@@ -100,12 +93,12 @@ contract Marketplace is
     /* Places an item for sale on the marketplace */
     function createSale(uint256 tokenId, uint256 price) external nonReentrant {
         require(price > 0, "createSale: Price must be at least 1 wei");
-        require(nft.ownerOf(tokenId) == msg.sender, "createSale: You do not own this token");
+        require(gameitem.ownerOf(tokenId) == msg.sender, "createSale: You do not own this token");
 
         _saleIds.increment();
         uint256 saleId = _saleIds.current();
 
-        nft.safeTransferFrom(msg.sender, address(this), tokenId);
+        gameitem.safeTransferFrom(msg.sender, address(this), tokenId);
 
         Sales[saleId] = Sale(
             saleId,
@@ -146,7 +139,7 @@ contract Marketplace is
         require(sellerTxSuccess, "Failed to transfer token");
 
         uint256 tokenId = sale.tokenId;
-        nft.transferFrom(address(this), msg.sender, tokenId);
+        gameitem.transferFrom(address(this), msg.sender, tokenId);
         uint256 currentTime = block.timestamp;
 
         sale.isSold = true;
@@ -196,7 +189,7 @@ contract Marketplace is
         Sale storage sale = Sales[saleId];
         require(sale.isActive, "cancelSale: Sale was ended.");
 
-        nft.transferFrom(address(this), msg.sender, sale.tokenId);
+        gameitem.transferFrom(address(this), msg.sender, sale.tokenId);
         sale.isActive = false;
 
         _saleInactive.increment();
@@ -208,23 +201,6 @@ contract Marketplace is
             sale.price,
             block.timestamp
         );
-    }
-
-    /* Returns all active sales */
-    function getActiveSales() external view returns (Sale[] memory) {
-        uint256 saleCount = _saleIds.current();
-        uint256 activeSaleCount = saleCount - _saleInactive.current() - _saleSold.current();
-
-        uint256 currentIndex = 0;
-        Sale[] memory sales = new Sale[](activeSaleCount);
-        for (uint256 i = 1; i <= saleCount; i++) {
-            if (Sales[i].isActive) {
-                Sale storage sale = Sales[i];
-                sales[currentIndex++] = sale;
-            }
-        }
-
-        return sales;
     }
 
     function getActiveSalesByPage(uint page, uint size) external view returns (Sale[] memory) {
@@ -310,46 +286,18 @@ contract Marketplace is
     }
 
     function getUserNFTs() external view returns (TokenInfo[] memory) {
-        uint256 balance = nft.balanceOf(msg.sender);
+        uint256 balance = gameitem.balanceOf(msg.sender);
 
         TokenInfo[] memory tokens = new TokenInfo[](balance);
         for (uint256 i = 0; i < balance; i++) {
-            uint256 tokenId = ERC721Enumerable(address(nft)).tokenOfOwnerByIndex(msg.sender, i);
-            string memory uri = ERC721URIStorage(address(nft)).tokenURI(tokenId);
+            uint256 tokenId = ERC721Enumerable(address(gameitem)).tokenOfOwnerByIndex(msg.sender, i);
+            string memory uri = ERC721URIStorage(address(gameitem)).tokenURI(tokenId);
             
             tokens[i] = TokenInfo(
-                tokenId, address(nft), uri
+                tokenId, address(gameitem), uri
             );
         }
 
         return tokens;
-    }
-
-    /**
-     *  Store
-     */
-    mapping(uint256 => uint256) public availableQuantity;
-
-    event QuantitySet(uint256 itemId, uint256 quantity);
-
-    function setItemQuantity(uint256 itemId, uint256 quantity) external onlyOwner {
-        availableQuantity[itemId] = quantity;
-
-        emit QuantitySet(itemId, quantity);
-    }
-
-    function setStorePrice(uint256 newStorePrice) external {
-        storePrice = newStorePrice;
-    }
-
-    function buyGameItem(string memory uri, uint256 itemId) external {
-        require(availableQuantity[itemId] > 0, "buyGameItem: this item is not available");
-
-        bool transfered = howl.transferFrom(msg.sender, feeReceiver, storePrice);
-        require(transfered, "buyGameItem: Failed to transfer fee");
-
-        IGameItem(address(nft)).marketCreateGameItem(msg.sender, uri, itemId, 3);
-
-        availableQuantity[itemId]--;
     }
 }

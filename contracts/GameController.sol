@@ -15,17 +15,15 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 import "./interfaces/IGameItem.sol";
-
-import "hardhat/console.sol";
+import "./interfaces/IStore.sol";
 
 contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     using SafeMath for uint256;
 
     Counters.Counter public gameId;
     address public howl;
-    address public nft;
+    address public gameitem;
     address public gameMaster;
-    uint256 public ticketPrice;
     uint256 public hostingFeeX10;
     uint256[] public pvepoints;
     uint256[] public pveprizes;
@@ -37,9 +35,9 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         __Ownable_init();
 
         howl = erc20;
-        nft = erc721;
+        gameitem = erc721;
+
         gameMaster = msg.sender;
-        ticketPrice = uint256(10).mul(10 ** 18); // 10 HWL
         hostingFeeX10 = 50; // 5%
 
         prizePercentX10[2] = [950, 0];
@@ -59,6 +57,20 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
+
+    /**
+     *  Store
+     */
+    address public store;
+
+    function setStore(address storeAddress) external onlyOwner {
+        store = storeAddress;
+    }
+
+    modifier onlyStore() {
+        require(msg.sender == store, "onlyStore: caller is not store");
+        _;
+    }
 
     /**
      * Game Master
@@ -86,49 +98,13 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         pveprizes = prizes;
     }
 
-    /**
-     * Ticket price
-     */
-    function setTicketPrice(uint256 newTicketPrice) external onlyOwner {
-        require(newTicketPrice > 0, "setTicketPrice: Price must be at least 1 wei");
-        ticketPrice = newTicketPrice;
-    }
     
     /** 
-     *  Players
+     *  Players and game
      */
     struct Player {
-        string name;
         uint256 ticket;
         uint256 point;
-    }
-
-    mapping(address => Player) public players;
-
-    event PvPRewarded(address gameMaster, address player, uint256 rank, uint256 token, uint256 point, uint256 time);
-    event PvERewarded(address gameMaster, address player, uint256 rank, uint256 token, uint256 point, uint256 time);
-    event TicketBought(address player, uint256 boughtQuantity, uint256 price);
-    event GameStarted(uint256 gameid, address[] players, bool isActive);
-
-    /** 
-     *  Player name
-     */
-    function setPlayerName(string memory newPlayerName) external {
-        players[msg.sender].name = newPlayerName;
-    }
-
-    /**
-     * Ticket
-     */
-    function buyTicket(uint256 numTicket) external {
-        require(numTicket > 0, "buyTicket: Number of ticket to buy must be greater than 0");
-
-        uint256 price = numTicket * ticketPrice;
-        bool transfered = IERC20(howl).transferFrom(msg.sender, gameMaster, price);
-        require(transfered, "buyTicket: Failed to transfer");
-
-        players[msg.sender].ticket += numTicket;
-        emit TicketBought(msg.sender, numTicket, price);
     }
 
     struct GameInfo {
@@ -138,8 +114,19 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         mapping(address => bool) addressToRewarded;
     }
 
+    mapping(address => Player) public players;
     mapping(uint256 => GameInfo) public games;
 
+    event PvPRewarded(address gameMaster, address player, uint256 rank, uint256 token, uint256 point, uint256 time);
+    event PvERewarded(address gameMaster, address player, uint256 rank, uint256 token, uint256 point, uint256 time);
+    event GameStarted(uint256 gameid, address[] players, bool isActive);
+
+    /**
+     *  set num ticket for player
+     */
+    function setTicket(address player, uint256 numTicket) external onlyStore {
+        players[player].ticket += numTicket;
+    }
     /**
      *  Game
      */
@@ -155,7 +142,6 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         for (uint i = 0; i < addresses.length; i++) {
             game.addressToRewarded[addresses[i]] = false;
         }
-        
 
         GameInfo storage game2 = games[2];
         game2.id = 2;
@@ -189,6 +175,7 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     function _rewardPvP(address[] memory player, uint256[] memory percentX10, uint256[] memory point) internal {
         uint len = player.length;
+        uint ticketPrice = IStore(store).getTicketPrice();
         uint pool = ticketPrice.mul(len);
 
         for (uint i = 0; i < player.length; i++) {
@@ -203,7 +190,7 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         }
     }
     
-    function rewardPvE(address player, uint256 rank) external onlyOwner {
+    function rewardPvE(address player, uint256 rank) external {
         require((rank > 0) && (rank < 7), "rewardPvE: Rank must be greater than 0 and smaller than 7");
         _rewardPvE(player, rank, pveprizes[rank - 1].mul(10 ** 18), pvepoints[rank - 1]);
     }
@@ -218,6 +205,28 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
 
     /**
+     *  Reward address
+     */
+    function rewardAddressPvP(address player, uint256 rank, uint256 room) external {
+        require(room > 1 && room < 7, "room must be greater than 1 and smaller than 7");
+        require(rank <= room, "rank must be smaller than number of player in a room");
+
+        uint ticketPrice = IStore(store).getTicketPrice();
+        uint pool = ticketPrice.mul(room);
+
+        uint256 prize = pool.mul(prizePercentX10[room][rank - 1]).div(1000);
+        if (prize > 0) {
+            bool transfered = IERC20(howl).transferFrom(gameMaster, player, prize);
+            require(transfered, "rewardAddressPvP: Failed to transfer");
+        }
+        players[player].point += points[room][rank - 1];
+
+        players[player].ticket -= 1;
+
+        emit PvPRewarded(gameMaster, player, rank, prize, points[room][rank - 1], block.timestamp);
+    }
+
+    /**
      * NFT
      */
     struct ItemInfo {
@@ -227,12 +236,12 @@ contract GameController is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
 
     function getGameItems(address player) external view returns (ItemInfo[] memory) {
-        uint256 numToken = IERC721(nft).balanceOf(player);
+        uint256 numToken = IERC721(gameitem).balanceOf(player);
 
         ItemInfo[] memory items = new ItemInfo[](numToken);
         for (uint256 i = 0; i < numToken; i++) {
-            uint256 tokenId = ERC721Enumerable(nft).tokenOfOwnerByIndex(player, i);
-            (uint256 itemId, uint256 star) = IGameItem(nft).getGameItem(tokenId);
+            uint256 tokenId = ERC721Enumerable(gameitem).tokenOfOwnerByIndex(player, i);
+            (uint256 itemId, uint256 star) = IGameItem(gameitem).getGameItem(tokenId);
             items[i] = ItemInfo(tokenId, itemId, star);
         }
 

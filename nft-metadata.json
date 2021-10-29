@@ -2,22 +2,26 @@
     "attributes": [
         {
             "trait_type": "ID",
-            "value": "1"
+            "value": "11"
         },
         {
             "trait_type": "Vehicle",
             "value": "Motorbike"
         },
         {
-            "trait_type": "Star",
-            "value": "5"
+            "trait_type": "Motorbike Types",
+            "value": "Dirt Bike"
         },
         {
             "trait_type": "Name",
-            "value": "Kawakiki Dirt Bike"
+            "value": "Hundi DirtBike"
+        },
+        {
+            "trait_type": "PNG",
+            "value": "https://gateway.pinata.cloud/ipfs/QmbP9XLgWqGSCfqcpyYVmEbwgAz196CX6qFPKwxJiW151A"
         }
     ],
     "description": "Motorbike in HowlCity game",
-    "image": "https://gateway.pinata.cloud/ipfs/QmdrcQQe3jnudmNKVjVgvdaDyLyVAhHuxwctwu6jZkd26q",
-    "name": "Motorbike NFT"
+    "image": "https://gateway.pinata.cloud/ipfs/QmaymDNopTRDKBPAKP4XRvT7GSK5dntQRUA4pXbCkrXmsv",
+    "name": "HowlCity Motorbike NFT"
 }

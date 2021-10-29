@@ -4,17 +4,17 @@ const fs = require('fs')
 const deploy = async () => {
     let obj = JSON.parse(fs.readFileSync(`${network.name}_address.json`))
 
-    const Marketplace = await ethers.getContractFactory('Marketplace')
-    const market = await upgrades.deployProxy(Marketplace, {
+    const Store = await ethers.getContractFactory('Store')
+    const store = await upgrades.deployProxy(Store, {
         kind: 'uups',
         initializer: false,
     })
-    await market.deployed()
-    await market.initialize(obj.tokenAddress, obj.nftAddress)
+    await store.deployed()
+    await store.initialize(obj.tokenAddress, obj.nftAddress)
 
-    obj.marketAddress = market.address
+    obj.storeAddress = store.address
     fs.writeFileSync(`${network.name}_address.json`, JSON.stringify(obj))
-    console.log('Contract deploy to a address:', market.address)
+    console.log('Contract deploy to a address:', store.address)
 }
 
 deploy()

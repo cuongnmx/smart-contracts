@@ -68,20 +68,19 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
         setApprovalForAll(addr, true);
     }
 
-    address public market;
+    /**
+     *  Set store
+     */
+    address public store;
 
-    modifier onlyMarket() {
-        require(msg.sender == market, "onlyMarket: caller is not marketplace");
+    function setStore(address storeAddress) external onlyOwner {
+        store = storeAddress;
+    }
+
+    modifier onlyStore() {
+        require(msg.sender == store, "onlyStore: caller is not store");
         _;
     }
-
-    /**
-     *  Set market
-     */
-    function setMarket(address marketAddress) external onlyOwner {
-        market = marketAddress;
-    }
-
 
     /**
      * Game item
@@ -116,11 +115,11 @@ contract GameItem is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownab
         _createGameItem(user, uri, itemId, star);
     }
 
-    function marketCreateGameItem(address user, string memory uri, uint256 itemId, uint8 star) external onlyMarket {
+    function storeCreateGameItem(address user, string memory uri, uint256 itemId, uint8 star) external onlyStore {
         _createGameItem(user, uri, itemId, star);
     }
 
-    function upgradeGameItem(uint256 tokenId) external onlyMarket {
+    function upgradeGameItem(uint256 tokenId) external onlyStore {
         Item storage item = gameItems[tokenId];
         require(item.star < 5, "Number of star is already max");
 
