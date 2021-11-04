@@ -16,14 +16,7 @@ task('reward', 'Game reward').setAction(async (args, hre) => {
         signer
     )
 
-    const allowance = await howl.allowance(signer.address, controllerAddress)
-    if (allowance.eq(ethers.BigNumber.from('0'))) {
-        console.log('allow')
-        const unlimitedAllowance =
-            '115792089237316195423570985008687907853269984665640564039457584007913129639935'
-        let approval = await howl.approve(controllerAddress, unlimitedAllowance)
-        await approval.wait()
-    }
+    hre.run('erc20-approve-allowance', {contract: howl, address: controllerAddress})
 
     const gameController = new ethers.Contract(
         controllerAddress,
@@ -36,7 +29,7 @@ task('reward', 'Game reward').setAction(async (args, hre) => {
         '0x446ef7E94bD3Ed4c4ae31795659Ff643f47bb746',
     ]
 
-    const rewarded = await gameController.rewardPvP(players)
+    const rewarded = await gameController.rewardPvE(players[0], 6)
     await rewarded.wait()
     console.log('done')
 })
