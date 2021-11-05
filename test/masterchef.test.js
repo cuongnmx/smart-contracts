@@ -16,10 +16,21 @@ const poolInfoLog = (poolInfo) => {
 
 const userInfoLog = (userInfo) => {
     const info = {
-        amount: userInfo.amount.toNumber(),
-        rewardDebt: userInfo.rewardDebt.toNumber()
+        amount: formatEther(userInfo.amount),
+        rewardDebt: formatEther(userInfo.rewardDebt)
     }
     console.log(info)
+}
+
+const logInfo = async (poolId, userAddress) => {
+    const lpTokenInfo = await this.MasterChef.poolInfo(poolId)
+    poolInfoLog(lpTokenInfo)
+
+    const userInfo = await this.MasterChef.userInfo(poolId, userAddress)
+    userInfoLog(userInfo)
+
+    const howlBal = await this.HowlToken.balanceOf(userAddress)
+    console.log('howl balance', formatEther(howlBal))
 }
 
 describe('MasterChef', () => {
@@ -34,6 +45,7 @@ describe('MasterChef', () => {
             require('../artifacts/contracts/HOWLCapped.sol/HOWLCapped.json').abi
         this.masterchefAbi =
             require('../artifacts/contracts/MasterChef.sol/MasterChef.json').abi
+        this.unlimitedAllowance = '115792089237316195423570985008687907853269984665640564039457584007913129639935'
     })
 
     it('deploy', async () => {
@@ -56,7 +68,6 @@ describe('MasterChef', () => {
         )
 
         const blockNumber = await this.signers[0].provider.getBlockNumber()
-
         const masterchefDeploy = await this.MasterChef.deploy(
             this.HowlToken.address,
             this.signers[7].address,
@@ -71,9 +82,15 @@ describe('MasterChef', () => {
             this.masterchefAbi,
             this.signers[0]
         )
+
+        const approved = await this.HowlToken.approve(this.MasterChef.address, this.unlimitedAllowance)
+        await approved.wait()
     })
 
-    it('distribute lpToken', async () => {
+    it('distribute token', async () => {
+        const mint = await this.HowlToken.mint(this.signers[0].address, parseEther('1000000'))
+        await mint.wait()
+
         const mint1 = await this.lpToken.mint(this.signers[1].address, parseEther('1000000'))
         await mint1.wait()
 
@@ -107,21 +124,47 @@ describe('MasterChef', () => {
     })
 
     it('info', async () => {
-        const lpTokenInfo = await this.MasterChef.poolInfo(1)
-        poolInfoLog(lpTokenInfo)
-
-        const userInfo = await this.MasterChef.userInfo(1, this.signers[1].address)
-        userInfoLog(userInfo)
+        logInfo(1, this.signers[1].address)
     })
 
     it('deposit', async () => {
         const pool = new ethers.Contract(
+            this.MasterChef.address,
+            this.masterchefAbi,
+            this.signers[1]
+        )
+
+        const lpToken = new ethers.Contract(
             this.lpToken.address,
             this.lpTokenAbi,
             this.signers[1]
         )
 
-        //const deposited = await pool.deposit(0, parseEther('100'))
-        //await deposited.wait()
+        const approved = await lpToken.approve(pool.address, this.unlimitedAllowance)
+        await approved.wait()
+
+        const deposited = await pool.deposit(1, parseEther('100'))
+        await deposited.wait()
+
+        logInfo(1, this.signers[1].address)
+    })
+
+    it('withdraw', async () => {
+        const pool = new ethers.Contract(
+            this.MasterChef.address,
+            this.masterchefAbi,
+            this.signers[1]
+        )
+
+        const lpToken = new ethers.Contract(
+            this.lpToken.address,
+            this.lpTokenAbi,
+            this.signers[1]
+        )
+
+        const withdrawed = await pool.withdraw(1, parseEther('50'))
+        await withdrawed.wait()
+
+        logInfo(1, this.signers[1].address)
     })
 })
