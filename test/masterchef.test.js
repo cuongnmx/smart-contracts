@@ -31,6 +31,9 @@ const logInfo = async (poolId, userAddress) => {
 
     const howlBal = await this.HowlToken.balanceOf(userAddress)
     console.log('howl balance', formatEther(howlBal))
+
+    const devBal = await this.HowlToken.balanceOf(this.signers[7].address)
+    console.log('dev balance', formatEther(devBal))
 }
 
 describe('MasterChef', () => {
@@ -124,7 +127,7 @@ describe('MasterChef', () => {
     })
 
     it('info', async () => {
-        logInfo(1, this.signers[1].address)
+        await logInfo(1, this.signers[1].address)
     })
 
     it('deposit', async () => {
@@ -146,7 +149,7 @@ describe('MasterChef', () => {
         const deposited = await pool.deposit(1, parseEther('100'))
         await deposited.wait()
 
-        logInfo(1, this.signers[1].address)
+        await logInfo(1, this.signers[1].address)
     })
 
     it('withdraw', async () => {
@@ -162,9 +165,12 @@ describe('MasterChef', () => {
             this.signers[1]
         )
 
-        const withdrawed = await pool.withdraw(1, parseEther('50'))
+        const withdrawed = await pool.withdraw(1, parseEther('25'))
         await withdrawed.wait()
+        await logInfo(1, this.signers[1].address)
 
-        logInfo(1, this.signers[1].address)
+        const withdrawed2 = await pool.withdraw(1, parseEther('25'))
+        await withdrawed2.wait()
+        await logInfo(1, this.signers[1].address)
     })
 })
