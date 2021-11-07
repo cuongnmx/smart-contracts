@@ -71,14 +71,17 @@ describe('MasterChef', () => {
         )
 
         const blockNumber = await this.signers[0].provider.getBlockNumber()
-        const masterchefDeploy = await this.MasterChef.deploy(
+        const masterchefDeploy = await upgrades.deployProxy(this.MasterChef, {
+            kind: 'uups',
+            initializer: false
+        })
+        await masterchefDeploy.deployed()
+        await masterchefDeploy.initialize(
             this.HowlToken.address,
             this.signers[7].address,
-            parseEther('100'),
-            //100,
+            parseEther('40'),
             blockNumber
         )
-        await masterchefDeploy.deployed()
 
         this.MasterChef = new ethers.Contract(
             masterchefDeploy.address,
@@ -112,7 +115,7 @@ describe('MasterChef', () => {
         await minted.wait()
 
         const balance = await this.HowlToken.balanceOf(this.MasterChef.address)
-        console.log('HOWL of MasterChef', formatEther(balance))
+        //console.log('HOWL of MasterChef', formatEther(balance))
     })
 
     it('add staking pool', async () => {
@@ -120,17 +123,17 @@ describe('MasterChef', () => {
         await pool.wait()
 
         const poolLength = await this.MasterChef.poolLength()
-        console.log('pool length:', poolLength.toNumber())
+        //console.log('pool length:', poolLength.toNumber())
 
         const totalAllocPoint = await this.MasterChef.totalAllocPoint()
-        console.log('total alloc point:', totalAllocPoint.toNumber())
+        //console.log('total alloc point:', totalAllocPoint.toNumber())
     })
 
-    it('info', async () => {
+    it.skip('info', async () => {
         await logInfo(1, this.signers[1].address)
     })
 
-    it('deposit', async () => {
+    it('signer 1 deposit', async () => {
         const pool = new ethers.Contract(
             this.MasterChef.address,
             this.masterchefAbi,
@@ -149,7 +152,29 @@ describe('MasterChef', () => {
         const deposited = await pool.deposit(1, parseEther('100'))
         await deposited.wait()
 
-        await logInfo(1, this.signers[1].address)
+        //await logInfo(1, this.signers[1].address)
+    })
+
+    it('signer 2 deposit', async () => {
+        const pool = new ethers.Contract(
+            this.MasterChef.address,
+            this.masterchefAbi,
+            this.signers[2]
+        )
+
+        const lpToken = new ethers.Contract(
+            this.lpToken.address,
+            this.lpTokenAbi,
+            this.signers[2]
+        )
+
+        const approved = await lpToken.approve(pool.address, this.unlimitedAllowance)
+        await approved.wait()
+
+        const deposited = await pool.deposit(1, parseEther('1000'))
+        await deposited.wait()
+
+        //await logInfo(1, this.signers[2].address)
     })
 
     it('withdraw', async () => {
@@ -165,12 +190,16 @@ describe('MasterChef', () => {
             this.signers[1]
         )
 
-        const withdrawed = await pool.withdraw(1, parseEther('25'))
+        const withdrawed = await pool.withdraw(1, parseEther('0'))
         await withdrawed.wait()
         await logInfo(1, this.signers[1].address)
 
-        const withdrawed2 = await pool.withdraw(1, parseEther('25'))
+        const withdrawed2 = await pool.withdraw(1, parseEther('0'))
         await withdrawed2.wait()
+        await logInfo(1, this.signers[1].address)
+
+        const withdrawed3 = await pool.withdraw(1, parseEther('0'))
+        await withdrawed3.wait()
         await logInfo(1, this.signers[1].address)
     })
 })

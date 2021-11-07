@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
@@ -17,9 +20,9 @@ import "./interfaces/IGameItem.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChef is Ownable {
+contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // Info of each user.
     struct UserInfo {
@@ -47,7 +50,7 @@ contract MasterChef is Ownable {
 
     // Info of each pool.
     struct PoolInfo {
-        IERC20 lpToken;           // Address of LP token contract.
+        IERC20Upgradeable lpToken;           // Address of LP token contract.
         uint256 allocPoint;       // How many allocation points assigned to this pool. HOWLs to distribute per block.
         uint256 lastRewardBlock;  // Last block number that HOWLs distribution occurs.
         uint256 accHowlPerShare; // Accumulated HOWLs per share, times 1e12. See below.
@@ -63,16 +66,16 @@ contract MasterChef is Ownable {
     // CAKE tokens created per block.
     uint256 public howlPerBlock;
     // Bonus muliplier for early howl makers.
-    uint256 public BONUS_MULTIPLIER = 1;
+    uint256 public BONUS_MULTIPLIER;
     // Lock time
-    uint256 public lockTime = 0 days;
+    uint256 public lockTime;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
     // Info of each user that stakes LP tokens.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     // Total allocation points. Must be the sum of all allocation points in all pools.
-    uint256 public totalAllocPoint = 0;
+    uint256 public totalAllocPoint;
     // The block number when CAKE mining starts.
     uint256 public startBlock;
 
@@ -83,25 +86,33 @@ contract MasterChef is Ownable {
     event WithdrawNFT(address indexed user, uint256 indexed pid, uint256[] tokenIds);
     event EmergencyWithdrawNFT(address indexed user, uint256 indexed pid, uint256 tokenId);
 
-    constructor(
+    function initialize(
         address _howl,
         address _devaddr,
         uint256 _howlPerBlock,
         uint256 _startBlock
-    ) {
+    ) external initializer {
+        __Ownable_init();
+
         howl = HOWLCapped(_howl);
         devaddr = _devaddr;
         howlPerBlock = _howlPerBlock;
         startBlock = _startBlock;
 
+        BONUS_MULTIPLIER = 1;
+        lockTime = 0 days;
+        totalAllocPoint = 0;
+
         poolInfo.push(PoolInfo({
-            lpToken: IERC20(address(0)),
+            lpToken: IERC20Upgradeable(address(0)),
             allocPoint: 0,
             lastRewardBlock: _startBlock,
             accHowlPerShare: 0,
             totalNftStakingPoint: 0
         }));
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
 
     function updateMultiplier(uint256 multiplierNumber) public onlyOwner {
         BONUS_MULTIPLIER = multiplierNumber;
@@ -113,7 +124,7 @@ contract MasterChef is Ownable {
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IERC20 _lpToken, bool _withUpdate) public onlyOwner {
+    function add(uint256 _allocPoint, IERC20Upgradeable _lpToken, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -182,8 +193,8 @@ contract MasterChef is Ownable {
         uint256 howlReward = multiplier.mul(howlPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
         //howl.mint(devaddr, howlReward.div(10));
         //howl.mint(address(this), howlReward);
-        IERC20(address(howl)).safeTransferFrom(owner(), devaddr, howlReward.div(10));
-        IERC20(address(howl)).safeTransferFrom(owner(), address(this), howlReward);
+        IERC20Upgradeable(address(howl)).safeTransferFrom(owner(), devaddr, howlReward.div(10));
+        IERC20Upgradeable(address(howl)).safeTransferFrom(owner(), address(this), howlReward);
         pool.accHowlPerShare = pool.accHowlPerShare.add(howlReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
     }
@@ -303,10 +314,10 @@ contract MasterChef is Ownable {
 
     function getStakingPoint(uint256 nftId) internal view returns (uint256) {
         (uint256 _tokenId, uint256 star) = nft.getGameItem(nftId);
-        uint256 point = 50;
-        if (star == 5) point = 500;
-        else if (star == 4) point = 250;
-        else if (star == 3) point = 100;
+        uint256 point = 0;
+        if (star == 5) point = 1000;
+        else if (star == 4) point = 500;
+        else if (star == 3) point = 150;
         return point;
     }
 
@@ -314,5 +325,17 @@ contract MasterChef is Ownable {
     function dev(address _devaddr) public {
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
+    }
+
+    // Update howlPerBlock
+    function setHowlPerBlock(uint256 _howlPerBlock) external onlyOwner {
+        require(_howlPerBlock > 0, "setHowlPerBlock: amount must be greater than 1 wei");
+
+        howlPerBlock = _howlPerBlock;
+    }
+
+    // Set locktime
+    function setLockTime(uint256 _lockTime) external onlyOwner {
+        lockTime = _lockTime;
     }
 }
