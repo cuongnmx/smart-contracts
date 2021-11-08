@@ -130,7 +130,7 @@ describe('MasterChef', () => {
     })
 
     it.skip('info', async () => {
-        await logInfo(1, this.signers[1].address)
+        await logInfo(0, this.signers[1].address)
     })
 
     it('signer 1 deposit', async () => {
@@ -149,10 +149,10 @@ describe('MasterChef', () => {
         const approved = await lpToken.approve(pool.address, this.unlimitedAllowance)
         await approved.wait()
 
-        const deposited = await pool.deposit(1, parseEther('100'))
+        const deposited = await pool.deposit(0, parseEther('100'))
         await deposited.wait()
 
-        //await logInfo(1, this.signers[1].address)
+        //await logInfo(0, this.signers[1].address)
     })
 
     it('signer 2 deposit', async () => {
@@ -171,10 +171,10 @@ describe('MasterChef', () => {
         const approved = await lpToken.approve(pool.address, this.unlimitedAllowance)
         await approved.wait()
 
-        const deposited = await pool.deposit(1, parseEther('1000'))
+        const deposited = await pool.deposit(0, parseEther('1000'))
         await deposited.wait()
 
-        //await logInfo(1, this.signers[2].address)
+        //await logInfo(0, this.signers[2].address)
     })
 
     it('withdraw', async () => {
@@ -190,16 +190,20 @@ describe('MasterChef', () => {
             this.signers[1]
         )
 
-        const withdrawed = await pool.withdraw(1, parseEther('0'))
+        const withdrawed = await pool.withdraw(0, parseEther('0'))
         await withdrawed.wait()
-        await logInfo(1, this.signers[1].address)
+        await logInfo(0, this.signers[1].address)
 
-        const withdrawed2 = await pool.withdraw(1, parseEther('0'))
+        const withdrawed2 = await pool.withdraw(0, parseEther('50'))
         await withdrawed2.wait()
-        await logInfo(1, this.signers[1].address)
+        await logInfo(0, this.signers[1].address)
 
-        const withdrawed3 = await pool.withdraw(1, parseEther('0'))
+        const withdrawed3 = await pool.withdraw(0, parseEther('50'))
         await withdrawed3.wait()
-        await logInfo(1, this.signers[1].address)
+        await logInfo(0, this.signers[1].address)
+
+        const withdrawed4 = await pool.withdraw(0, parseEther('0'))
+        await withdrawed4.wait()
+        await logInfo(0, this.signers[1].address)
     })
 })

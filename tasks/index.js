@@ -4,6 +4,7 @@ const { formatEther } = require('../utils')
 require('./marketplace.js')
 require('./store.js')
 require('./gamecontroller.js')
+require('./masterchef.js')
 
 task('accounts', 'Prints the list of accounts').setAction(async (args, hre) => {
     const accounts = await hre.ethers.getSigners()

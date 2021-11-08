@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-//import "./HOWL.sol";
+import "./HOWLCapped.sol";
 import "./interfaces/IGameItem.sol";
 
 // MasterChef is the master of HOWL. He can make HOWL and he is a fair guy.
@@ -20,7 +20,7 @@ import "./interfaces/IGameItem.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+contract NFTStaking is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     using SafeMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -31,6 +31,11 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 lastDepositTimestamp; // Deposit timestamp
         bool staked;
         
+        // for NFT staking pool
+        uint256[] stakedNFTs; // array of NFT id is staked
+        uint256 nftStakingPoint;
+        uint256 lastNFTDepositTimestamp;
+
         // We do some fancy math here. Basically, any point in time, the amount of HOWLs
         // entitled to a user but is pending to be distributed is:
         //
@@ -49,10 +54,13 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 allocPoint;       // How many allocation points assigned to this pool. HOWLs to distribute per block.
         uint256 lastRewardBlock;  // Last block number that HOWLs distribution occurs.
         uint256 accHowlPerShare; // Accumulated HOWLs per share, times 1e12. See below.
+        uint256 totalNftStakingPoint;
     }
 
     // The HOWL TOKEN!
-    IERC20Upgradeable public howl;
+    HOWLCapped public howl;
+    // Game NFT
+    IGameItem public nft;
     // Dev address.
     address public devaddr;
     // CAKE tokens created per block.
@@ -61,8 +69,6 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     uint256 public BONUS_MULTIPLIER;
     // Lock time
     uint256 public lockTime;
-    uint256 public stakeThreshold;
-    address public minter;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -76,6 +82,9 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, uint256 timestamp);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event DepositNFT(address indexed user, uint256 indexed pid, uint256[] tokenIds, uint256 timestamp);
+    event WithdrawNFT(address indexed user, uint256 indexed pid, uint256[] tokenIds);
+    event EmergencyWithdrawNFT(address indexed user, uint256 indexed pid, uint256 tokenId);
 
     function initialize(
         address _howl,
@@ -85,7 +94,7 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     ) external initializer {
         __Ownable_init();
 
-        howl = IERC20Upgradeable(_howl);
+        howl = HOWLCapped(_howl);
         devaddr = _devaddr;
         howlPerBlock = _howlPerBlock;
         startBlock = _startBlock;
@@ -93,8 +102,14 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         BONUS_MULTIPLIER = 1;
         lockTime = 0 days;
         totalAllocPoint = 0;
-        stakeThreshold = 60 ether;
-        minter = owner();
+
+        poolInfo.push(PoolInfo({
+            lpToken: IERC20Upgradeable(address(0)),
+            allocPoint: 0,
+            lastRewardBlock: _startBlock,
+            accHowlPerShare: 0,
+            totalNftStakingPoint: 0
+        }));
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
@@ -119,7 +134,8 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             lpToken: _lpToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
-            accHowlPerShare: 0
+            accHowlPerShare: 0,
+            totalNftStakingPoint: 0
         }));
     }
 
@@ -175,14 +191,18 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 howlReward = multiplier.mul(howlPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        howl.safeTransferFrom(minter, devaddr, howlReward.div(10));
-        howl.safeTransferFrom(minter, address(this), howlReward);
+        //howl.mint(devaddr, howlReward.div(10));
+        //howl.mint(address(this), howlReward);
+        IERC20Upgradeable(address(howl)).safeTransferFrom(owner(), devaddr, howlReward.div(10));
+        IERC20Upgradeable(address(howl)).safeTransferFrom(owner(), address(this), howlReward);
         pool.accHowlPerShare = pool.accHowlPerShare.add(howlReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
     }
 
     // Deposit LP tokens to MasterChef for HOWL allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
+        require(_pid != 0, 'deposit: not LP token pool');
+
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
@@ -196,7 +216,7 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             user.amount = user.amount.add(_amount);
         }
-        if (user.amount >= stakeThreshold) {
+        if (user.amount >= 60 ether) {
             user.staked = true;
         }
         user.rewardDebt = user.amount.mul(pool.accHowlPerShare).div(1e12);
@@ -207,6 +227,8 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
+        require(_pid != 0, 'deposit: not LP token pool');
+
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.lastDepositTimestamp.add(lockTime) <= block.timestamp, "withdraw: withdrawal is only available after lock time");
@@ -221,7 +243,7 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
         }
-        if (user.amount < stakeThreshold) {
+        if (user.amount < 60 ether) {
             user.staked = false;
         }
         user.rewardDebt = user.amount.mul(pool.accHowlPerShare).div(1e12);
@@ -238,6 +260,48 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         user.rewardDebt = 0;
     }
 
+    // Deposit NFT to NFT staking pool
+    function depositNFT(uint256[] memory _nftIds) external {
+        PoolInfo storage pool = poolInfo[0];
+        UserInfo storage user = userInfo[0][msg.sender];
+
+        for (uint256 i = 0; i < _nftIds.length; i++) {
+            uint256 nftId = _nftIds[i];
+
+            IERC721(address(nft)).transferFrom(msg.sender, address(this), nftId);
+            user.stakedNFTs.push(nftId);
+            user.nftStakingPoint += getStakingPoint(nftId);
+            pool.totalNftStakingPoint += getStakingPoint(nftId);
+        }
+
+        user.lastNFTDepositTimestamp = block.timestamp;
+
+        emit DepositNFT(msg.sender, 0, _nftIds, user.lastNFTDepositTimestamp);
+    }
+
+    // Withdraw NFT from NFT staking pool
+    function withdrawNFT(uint256[] memory _nftIds) external {
+        PoolInfo storage pool = poolInfo[0];
+        UserInfo storage user = userInfo[0][msg.sender];
+
+        require(user.lastNFTDepositTimestamp.add(lockTime) <= block.timestamp, "withdrawNFT: NFT withdrawal is only available after lock time");
+
+        for (uint256 i = 0; i < _nftIds.length; i++) {
+            uint256 nftId = _nftIds[i];
+
+            IERC721(address(nft)).transferFrom(address(this), msg.sender, nftId);
+            user.nftStakingPoint -= getStakingPoint(nftId);
+            pool.totalNftStakingPoint -= getStakingPoint(nftId);
+        }
+
+        emit WithdrawNFT(msg.sender, 0, _nftIds);
+    }
+
+    function getPoolNftStakingPoint() public view returns (uint256) {
+        PoolInfo storage pool = poolInfo[0];
+        return pool.totalNftStakingPoint; 
+    }
+
     // Safe HOWL transfer function, just in case if rounding error causes pool to not have enough HOWLs.
     function safeHowlTransfer(address _to, uint256 _amount) internal {
         uint256 howlBal = howl.balanceOf(address(this));
@@ -246,6 +310,15 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         } else {
             howl.transfer(_to, _amount);
         }
+    }
+
+    function getStakingPoint(uint256 nftId) internal view returns (uint256) {
+        (uint256 _tokenId, uint256 star) = nft.getGameItem(nftId);
+        uint256 point = 0;
+        if (star == 5) point = 1000;
+        else if (star == 4) point = 500;
+        else if (star == 3) point = 150;
+        return point;
     }
 
     // Update dev address by the previous dev.
@@ -264,13 +337,5 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     // Set locktime
     function setLockTime(uint256 _lockTime) external onlyOwner {
         lockTime = _lockTime;
-    }
-
-    function setMinter(address _minter) external onlyOwner {
-        minter = _minter;
-    }
-
-    function setStakeThreshold(uint256 _threshold) external onlyOwner {
-        stakeThreshold = _threshold;
     }
 }
