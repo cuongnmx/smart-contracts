@@ -10,8 +10,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import "./interfaces/IGameItem.sol";
-
 // MasterChef is the master of HOWL. He can make HOWL and he is a fair guy.
 //
 // Note that it's ownable and the owner wields tremendous power. The ownership
