@@ -16,9 +16,20 @@ const deploy = async () => {
     await chef.initialize(
         obj.tokenAddress,
         signer.address,
-        ethers.utils.parseEther('40'),
+        ethers.utils.parseEther('0.5708'),
         blockNumber
     )
+
+    const unlimitedAllowance = '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+    const howl = new ethers.Contract(
+        obj.tokenAddress,
+        require('../artifacts/contracts/HOWL.sol/HOWL.json').abi,
+        signer
+    )
+
+    const approval = await howl.approve(chef.address, unlimitedAllowance)
+    await approval.wait()
+
     obj.masterChefAddress = chef.address
     fs.writeFileSync(`${network.name}_address.json`, JSON.stringify(obj))
     console.log('Contract deploy to a address:', chef.address)

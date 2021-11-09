@@ -2,6 +2,7 @@
  * @type import('hardhat/config').HardhatUserConfig
  */
 require('dotenv').config()
+require('dotenv').config({ path: '.secret' })
 require('@nomiclabs/hardhat-ethers')
 require('@nomiclabs/hardhat-waffle')
 require('@openzeppelin/hardhat-upgrades')
@@ -44,7 +45,7 @@ module.exports = {
             url: 'https://bsc-dataseed.binance.org/',
             chainId: 56,
             gasPrice: 20000000000,
-            accounts: [`0x${process.env.HOWL_PRIVATE_KEY}`]
+            accounts: [`0x${process.env.MAINNET_PRIVATE_KEY}`]
         }
     },
     mocha: {

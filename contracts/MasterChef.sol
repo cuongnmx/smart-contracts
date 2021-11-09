@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-//import "./HOWL.sol";
 import "./interfaces/IGameItem.sol";
 
 // MasterChef is the master of HOWL. He can make HOWL and he is a fair guy.
@@ -29,7 +28,6 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 amount;     // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
         uint256 lastDepositTimestamp; // Deposit timestamp
-        bool staked;
         
         // We do some fancy math here. Basically, any point in time, the amount of HOWLs
         // entitled to a user but is pending to be distributed is:
@@ -61,8 +59,8 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     uint256 public BONUS_MULTIPLIER;
     // Lock time
     uint256 public lockTime;
-    uint256 public stakeThreshold;
     address public minter;
+    uint256 public totalStakedHWL;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -93,8 +91,15 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         BONUS_MULTIPLIER = 1;
         lockTime = 0 days;
         totalAllocPoint = 0;
-        stakeThreshold = 60 ether;
         minter = owner();
+
+        poolInfo.push(PoolInfo({
+            lpToken: IERC20Upgradeable(_howl),
+            allocPoint: 1000,
+            lastRewardBlock: _startBlock,
+            accHowlPerShare: 0
+        }));
+        totalAllocPoint = 1000;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
@@ -145,7 +150,7 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accHowlPerShare = pool.accHowlPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = _pid == 0 ? totalStakedHWL : pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 howlReward = multiplier.mul(howlPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
@@ -168,14 +173,13 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = _pid == 0 ? totalStakedHWL : pool.lpToken.balanceOf(address(this));
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 howlReward = multiplier.mul(howlPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        howl.safeTransferFrom(minter, devaddr, howlReward.div(10));
         howl.safeTransferFrom(minter, address(this), howlReward);
         pool.accHowlPerShare = pool.accHowlPerShare.add(howlReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
@@ -194,10 +198,11 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         }
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+            if (_pid == 0) {
+                totalStakedHWL = totalStakedHWL.add(_amount);
+            }
             user.amount = user.amount.add(_amount);
-        }
-        if (user.amount >= stakeThreshold) {
-            user.staked = true;
+
         }
         user.rewardDebt = user.amount.mul(pool.accHowlPerShare).div(1e12);
         user.lastDepositTimestamp = block.timestamp;
@@ -218,11 +223,11 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             safeHowlTransfer(msg.sender, pending);
         }
         if (_amount > 0) {
+            if (_pid == 0) {
+                totalStakedHWL = totalStakedHWL.sub(_amount);
+            }
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
-        }
-        if (user.amount < stakeThreshold) {
-            user.staked = false;
         }
         user.rewardDebt = user.amount.mul(pool.accHowlPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
@@ -232,6 +237,9 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
+        if (_pid == 0) {
+            totalStakedHWL = totalStakedHWL.sub(user.amount);
+        }
         pool.lpToken.safeTransfer(address(msg.sender), user.amount);
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
         user.amount = 0;
@@ -268,9 +276,5 @@ contract MasterChef is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     function setMinter(address _minter) external onlyOwner {
         minter = _minter;
-    }
-
-    function setStakeThreshold(uint256 _threshold) external onlyOwner {
-        stakeThreshold = _threshold;
     }
 }
