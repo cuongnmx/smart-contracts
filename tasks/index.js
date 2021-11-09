@@ -60,7 +60,8 @@ task('approve', 'ERC20 approve').setAction(async (args, hre) => {
         tokenAddress,
         nftAddress,
         controllerAddress,
-        marketAddress
+        marketAddress,
+        masterChefAddress,
     } = require(`../${hre.network.name}_address.json`)
 
     const signer = await ethers.getSigner()
@@ -72,6 +73,11 @@ task('approve', 'ERC20 approve').setAction(async (args, hre) => {
     hre.run('erc20-approve-allowance', {
         contract: howl,
         address: controllerAddress
+    })
+
+    hre.run('erc20-approve-allowance', {
+        contract: howl,
+        address: masterChefAddress
     })
 })
 
